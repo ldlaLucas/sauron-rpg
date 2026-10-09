@@ -8,7 +8,8 @@ class NPC extends Entity {
         this.interactionRadius = 60;
         this.canInteract = false;
         this.dialogueStarted = false;
-        this.dialogueFinished = false; // ✅ Nova flag
+        this.dialogueFinished = false;
+        this.callbackExecuted = false; // ✅ NOVO: evita callback duplicado
     }
     
     update(player, input) {
@@ -18,7 +19,7 @@ class NPC extends Entity {
         
         this.canInteract = distance < this.interactionRadius;
         
-        // ✅ Só permitir interação se diálogo não foi iniciado ainda
+        // ✅ CORREÇÃO: Só permite interação se diálogo NÃO foi finalizado
         if (this.canInteract && input.isKeyDown('e') && !this.dialogueStarted && !this.dialogueFinished) {
             console.log(`🎮 Jogador pressionou E perto de ${this.name}`);
             return { type: 'dialogue', npc: this };
@@ -31,15 +32,19 @@ class NPC extends Entity {
         console.log(`💬 ${this.name} iniciando diálogo`);
         this.dialogueStarted = true;
         this.dialogueFinished = false;
+        this.callbackExecuted = false;
     }
     
     endDialogue() {
+        if (this.dialogueFinished) return; // ✅ Evita execução duplicada
+        
         console.log(`💬 ${this.name} terminando diálogo`);
         this.dialogueStarted = false;
-        this.dialogueFinished = true; // ✅ Marcar como finalizado
+        this.dialogueFinished = true;
         
-        // ✅ Chamar callback UMA VEZ
-        if (this.onDialogueEnd) {
+        // ✅ CORREÇÃO: Callback só é executado UMA VEZ
+        if (this.onDialogueEnd && !this.callbackExecuted) {
+            this.callbackExecuted = true;
             console.log(`🎯 Executando callback de ${this.name}`);
             this.onDialogueEnd();
         }
@@ -71,7 +76,7 @@ class NPC extends Entity {
         ctx.fillStyle = '#cccccc';
         ctx.fillRect(screenX + 9, screenY + 1, 14, 4);
         
-        // Indicador de interação
+        // Indicador de interação (só se diálogo ainda não foi finalizado)
         if (this.canInteract && !this.dialogueStarted && !this.dialogueFinished) {
             ctx.fillStyle = '#ffd700';
             ctx.font = 'bold 16px Arial';

@@ -61,7 +61,7 @@ class Enemy extends Entity {
         this.state = 'hurt';
         this.stateTimer = 0.2;
         
-        console.log(`💥 ${this.name} recebeu ${actualDamage} de dano (HP: ${this.hp}/${this.maxHP})`);
+        console.log(`🩸 ${this.name} recebeu ${actualDamage} de dano (HP: ${this.hp}/${this.maxHP})`);
         
         if (this.hp <= 0) {
             this.die();

@@ -19,6 +19,7 @@ class Game {
         this.equipment = new EquipmentSystem(this.inventory);
         this.damageNumbers = new DamageNumberSystem();
         this.saveManager = new SaveManager();
+        this.audio = new AudioManager();
         this.forgeUI = new ForgeUI(this.craftingSystem, this.inventory);
         this.inventoryUI = new InventoryUI(this.inventory, this.equipment);
         this.saveLoadUI = new SaveLoadUI(this.saveManager, this);
@@ -30,123 +31,62 @@ class Game {
         this.iKeyReleased = true;
         this.f5KeyReleased = true;
         this.f9KeyReleased = true;
+        this.mKeyReleased = true;
+        this.enterKeyReleased = true;
         
         this.playerLevel = 1;
         this.playerXP = 0;
         this.xpToNextLevel = 100;
         
-        // ✅ NOVO: Sistema de autosave
-        this.autoSaveNotification = null;
-        this.lastAutoSaveTime = 0;
-        //this.autoSaveInterval = 30; // autosave a cada 30 segundos
-        
-        // ✅ NOVO: Flags para detectar eventos importantes
-        this.lastPickupCount = 0;
-        this.lastQuestState = null;
-        this.lastEnemyKillCount = 0;
-                this.audio = new AudioManager(); // ✅ NOVO
         this.audioInitialized = false;
-        
-        // ✅ NOVO: Controle de passos (para não tocar a cada frame)
         this.footstepTimer = 0;
-        this.footstepInterval = 0.4; // um passo a cada 0.4s
+        this.footstepInterval = 0.4;
+        this.currentMusicState = null;
         
-        // ✅ NOVO: Controle de música atual
-        this.currentMusicState = null; // 'exploration' ou 'combat'
+        // ✅ NOVO: Controle de mapa atual
+        this.currentMapId = 'aule_workshop';
+        this.transitioning = false;
+        this.transitionAlpha = 0;
     }
     
     init() {
         console.log('🎮 Sauron RPG - Inicializando...');
         
-        this.tileMap = new TileMap(32);
-        
+        // Cria o jogador PRIMEIRO
         const startX = 3 * 32;
         const startY = 20 * 32;
         this.player = new Player(startX, startY);
         this.player.setEquipmentSystem(this.equipment);
         
-        // Forja
-        const forgeX = 31 * 32;
-        const forgeY = 5 * 32;
-        this.forge = new ForgeObject(forgeX, forgeY);
+        // Carrega o primeiro mapa
+        this.loadMap('aule_workshop');
         
-        // Bonecos de treino
-        this.spawnTrainingDummies();
-        
-        // Aulë
-        const auleX = 30 * 32;
-        const auleY = 5 * 32;
-        const auleDialogue = {
-            lines: [
-                { speaker: 'Aulë', text: 'Mairon, meu jovem aprendiz. Bem-vindo à minha oficina.' },
-                { speaker: 'Aulë', text: 'A criação nunca termina. Cada obra pode ser aperfeiçoada.' },
-                { speaker: 'Mairon', text: 'Mestre Aulë, estou pronto para aprender.' },
-                { speaker: 'Aulë', text: 'Então temos uma tarefa para você. Preciso de materiais para uma nova obra.' },
-                { speaker: 'Aulë', text: 'Traga-me 3 ferros, 2 madeiras e 1 pedra. Espalhados pela oficina.' },
-                { speaker: 'Aulë', text: 'Quando reunir tudo, volte à forja. Vamos criar sua primeira ferramenta.' },
-                { speaker: 'Aulë', text: 'Ah, e não esqueça dos bonecos de treino! Use ESPAÇO para atacar.' }
-            ]
-        };
-        
-        const onAuleDialogueEnd = () => {
-            if (this.questStarted || this.pickupsSpawned) return;
-            this.questStarted = true;
-            
-            this.questSystem.startQuest({
-                id: 'first_materials',
-                title: 'Os Materiais',
-                description: 'Colete materiais para Aulë',
-                objectives: [
-                    { type: 'collect', item: 'iron', amount: 3 },
-                    { type: 'collect', item: 'wood', amount: 2 },
-                    { type: 'collect', item: 'stone', amount: 1 }
-                ]
-            });
-            
-            this.spawnPickups();
-            this.pickupsSpawned = true;
-            
-            // ✅ NOVO: Autosave após iniciar missão
-            this.triggerAutoSave('📜 Missão iniciada');
-        };
-        
-        const aule = new NPC(auleX, auleY, 'Aulë', auleDialogue, onAuleDialogueEnd);
-        this.npcs.push(aule);
-        
-        this.dialogueSystem.onDialogueEnd = () => {
-            console.log('✅ Diálogo concluído');
-        };
-        
-        // ✅ NOVO: Salvar automaticamente ao fechar/atualizar página
-        window.addEventListener('beforeunload', (e) => {
-            console.log('🚪 Página sendo fechada - salvando...');
+        // Listeners de save
+        window.addEventListener('beforeunload', () => {
             this.saveManager.save(this, true);
         });
         
-        // ✅ NOVO: Salvar ao perder foco da aba (opcional, mas útil)
         window.addEventListener('visibilitychange', () => {
             if (document.hidden) {
-                console.log('👁️ Aba oculta - salvando...');
                 this.saveManager.save(this, true);
             }
         });
         
-        this.running = true;
-        this.gameLoop = new GameLoop(this);
-        this.gameLoop.start();
-        
-        console.log('✅ Jogo iniciado com autosave!');
-        console.log('💾 O jogo salva automaticamente em momentos importantes');
-        console.log('💾 Também salva ao fechar/atualizar a página');
-    
-                // ✅ NOVO: Inicializa áudio no primeiro clique do usuário
+         // ✅ Inicializa áudio na primeira interação
         const initAudioOnClick = () => {
             if (!this.audioInitialized) {
-                this.audio.init();
-                this.audio.playValinorAmbience();
-                this.currentMusicState = 'exploration';
-                this.audioInitialized = true;
-                console.log('🎵 Áudio iniciado');
+                try {
+                    this.audio.init();
+                    // Pequeno delay para garantir que o contexto está pronto
+                    setTimeout(() => {
+                        this.audio.playValinorAmbience();
+                        this.currentMusicState = 'exploration';
+                        console.log('🎵 Áudio iniciado com sucesso');
+                    }, 100);
+                    this.audioInitialized = true;
+                } catch (e) {
+                    console.error('❌ Erro ao iniciar áudio:', e);
+                }
             }
             window.removeEventListener('click', initAudioOnClick);
             window.removeEventListener('keydown', initAudioOnClick);
@@ -154,71 +94,204 @@ class Game {
         
         window.addEventListener('click', initAudioOnClick);
         window.addEventListener('keydown', initAudioOnClick);
+        
+        this.running = true;
+        this.gameLoop = new GameLoop(this);
+        this.gameLoop.start();
+        
+        console.log('✅ Jogo iniciado!');
     }
     
-    // ✅ NOVO: Método para disparar autosave com notificação
-    triggerAutoSave(reason = '') {
-        const success = this.saveManager.save(this, true);
-        if (success) {
-            this.showAutoSaveNotification(reason);
-            console.log(`💾 Autosave: ${reason}`);
+    // ✅ NOVO: Função simples de troca de mapa
+    loadMap(mapId, spawnX = null, spawnY = null) {
+        console.log(`🗺️ Carregando mapa: ${mapId}`);
+        
+        this.currentMapId = mapId;
+        
+        // Limpa entidades do mapa anterior
+        this.pickups = [];
+        this.enemies = [];
+        
+        // Cria o novo TileMap conforme o mapa
+        if (mapId === 'aule_workshop') {
+            this.tileMap = new TileMap(32); // mapa padrão
+            this.setupWorkshopEntities();
+        } else if (mapId === 'valinor_gardens') {
+            this.tileMap = this.createGardensMap();
+            this.setupGardensEntities();
         }
-    }
-    
-    // ✅ NOVO: Mostra notificação discreta de autosave
-    showAutoSaveNotification(reason) {
-        // Remove notificação anterior se existir
-        if (this.autoSaveNotification) {
-            this.autoSaveNotification.remove();
+        
+        // Move o jogador para o spawn
+        if (spawnX !== null && spawnY !== null) {
+            this.player.x = spawnX;
+            this.player.y = spawnY;
         }
         
-        const notif = document.createElement('div');
-        notif.style.cssText = `
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: #4ade80;
-            padding: 8px 16px;
-            border-radius: 4px;
-            font-size: 14px;
-            font-weight: bold;
-            z-index: 999;
-            border: 1px solid #4ade80;
-            opacity: 0;
-            transition: opacity 0.3s;
-        `;
-        notif.textContent = reason ? `💾 ${reason}` : '💾 Salvando...';
-        
-        document.getElementById('game-container').appendChild(notif);
-        
-        // Fade in
-        setTimeout(() => { notif.style.opacity = '1'; }, 10);
-        
-        // Fade out e remove
-        setTimeout(() => {
-            notif.style.opacity = '0';
-            setTimeout(() => {
-                if (notif.parentNode) notif.remove();
-            }, 300);
-        }, 2000);
-        
-        this.autoSaveNotification = notif;
+        console.log(`✅ Mapa carregado: ${this.getMapName()}`);
     }
     
-    spawnTrainingDummies() {
-        const positions = [
+    getMapName() {
+        const names = {
+            'aule_workshop': 'Oficina de Aulë',
+            'valinor_gardens': 'Jardins de Valinor'
+        };
+        return names[this.currentMapId] || 'Desconhecido';
+    }
+    
+    // Configura entidades da oficina
+        setupWorkshopEntities() {
+        // Forja
+        this.forge = new ForgeObject(31 * 32, 5 * 32);
+        
+        // ✅ NOVO: Adicionar portal de saída no lado direito do mapa
+        // O portal fica na coordenada (38, 12) — lado direito, meio vertical
+        if (!this.tileMap.decorations) {
+            this.tileMap.decorations = [];
+        }
+        this.tileMap.decorations.push({
+            type: 'portal',
+            x: 38 * 32,
+            y: 11 * 32
+        });
+        
+        // Bonecos de treino
+        const dummyPositions = [
             { x: 10 * 32, y: 10 * 32 },
             { x: 15 * 32, y: 15 * 32 },
             { x: 20 * 32, y: 20 * 32 }
         ];
-        
-        for (const pos of positions) {
+        for (const pos of dummyPositions) {
             if (!this.tileMap.isSolid(pos.x + 16, pos.y + 20)) {
                 this.enemies.push(new TrainingDummy(pos.x, pos.y));
             }
         }
+        
+        // Aulë (só se ainda não existe)
+        if (!this.npcs.find(n => n.name === 'Aulë')) {
+            const auleX = 30 * 32;
+            const auleY = 5 * 32;
+            const auleDialogue = {
+                lines: [
+                    { speaker: 'Aulë', text: 'Mairon, meu jovem aprendiz. Bem-vindo à minha oficina.' },
+                    { speaker: 'Aulë', text: 'A criação nunca termina. Cada obra pode ser aperfeiçoada.' },
+                    { speaker: 'Mairon', text: 'Mestre Aulë, estou pronto para aprender.' },
+                    { speaker: 'Aulë', text: 'Então temos uma tarefa para você. Preciso de materiais para uma nova obra.' },
+                    { speaker: 'Aulë', text: 'Traga-me 3 ferros, 2 madeiras e 1 pedra. Espalhados pela oficina.' },
+                    { speaker: 'Aulë', text: 'Quando reunir tudo, volte à forja. Vamos criar sua primeira ferramenta.' },
+                    { speaker: 'Aulë', text: 'Ah, e não esqueça dos bonecos de treino! Use ESPAÇO para atacar.' },
+                    { speaker: 'Aulë', text: 'E Mairon... os Jardins de Valinor estão além do portal dourado a leste. Um lugar de paz.' }
+                ]
+            };
+            
+            const onAuleDialogueEnd = () => {
+                if (this.questStarted || this.pickupsSpawned) return;
+                this.questStarted = true;
+                
+                this.questSystem.startQuest({
+                    id: 'first_materials',
+                    title: 'Os Materiais',
+                    description: 'Colete materiais para Aulë',
+                    objectives: [
+                        { type: 'collect', item: 'iron', amount: 3 },
+                        { type: 'collect', item: 'wood', amount: 2 },
+                        { type: 'collect', item: 'stone', amount: 1 }
+                    ]
+                });
+                
+                this.spawnPickups();
+                this.pickupsSpawned = true;
+            };
+            
+            const aule = new NPC(auleX, auleY, 'Aulë', auleDialogue, onAuleDialogueEnd);
+            this.npcs.push(aule);
+        }
+        
+        if (this.questStarted && !this.pickupsSpawned) {
+            this.spawnPickups();
+            this.pickupsSpawned = true;
+        }
+    }
+    
+    // ✅ NOVO: Cria o mapa dos Jardins
+    createGardensMap() {
+        const width = 50;
+        const height = 30;
+        const tiles = [];
+        
+        for (let y = 0; y < height; y++) {
+            const row = [];
+            for (let x = 0; x < width; x++) {
+                // Bordas = árvores
+                if (x === 0 || y === 0 || x === width - 1 || y === height - 1) {
+                    row.push('tree');
+                }
+                // Caminho principal horizontal
+                else if (y >= 13 && y <= 15) {
+                    row.push('garden_path');
+                }
+                // Lago central
+                else if (x >= 22 && x <= 28 && y >= 18 && y <= 23) {
+                    row.push('water');
+                }
+                // Área de flores (norte)
+                else if (x > 5 && x < 18 && y > 3 && y < 10) {
+                    row.push('flower_grass');
+                }
+                // Resto = grama
+                else {
+                    row.push('grass');
+                }
+            }
+            tiles.push(row);
+        }
+        
+        // Decorações
+        const decorations = [];
+        
+        // Árvores espalhadas
+        const treePositions = [
+            { x: 3 * 32, y: 3 * 32 },
+            { x: 8 * 32, y: 5 * 32 },
+            { x: 15 * 32, y: 2 * 32 },
+            { x: 35 * 32, y: 4 * 32 },
+            { x: 42 * 32, y: 7 * 32 },
+            { x: 5 * 32, y: 22 * 32 },
+            { x: 12 * 32, y: 25 * 32 },
+            { x: 38 * 32, y: 22 * 32 },
+            { x: 45 * 32, y: 20 * 32 },
+            { x: 30 * 32, y: 26 * 32 }
+        ];
+        for (const pos of treePositions) {
+            decorations.push({ type: 'tree', x: pos.x, y: pos.y });
+        }
+        
+        // Flores na área norte
+        for (let i = 0; i < 25; i++) {
+            decorations.push({
+                type: 'flower',
+                x: (6 + Math.random() * 11) * 32,
+                y: (4 + Math.random() * 5) * 32,
+                colorIndex: i % 4
+            });
+        }
+        
+        // Fonte no centro
+        decorations.push({ type: 'fountain', x: 24 * 32, y: 19 * 32 });
+        
+        // Estátuas
+        decorations.push({ type: 'statue', x: 33 * 32, y: 10 * 32 });
+        decorations.push({ type: 'statue', x: 40 * 32, y: 10 * 32 });
+        
+        // Portal de volta (lado esquerdo)
+        decorations.push({ type: 'portal', x: 0, y: 14 * 32 });
+        
+        return new TileMap(32, tiles, width, height, decorations);
+    }
+    
+    // ✅ NOVO: Configura entidades dos Jardins
+    setupGardensEntities() {
+        this.forge = null; // Sem forja nos jardins
+        this.npcs = []; // Sem NPCs nos jardins por enquanto
     }
     
     spawnPickups() {
@@ -238,10 +311,45 @@ class Game {
         }
     }
     
+    // ✅ NOVO: Troca de mapa com fade
+    changeMap(targetMapId, spawnX, spawnY) {
+        if (this.transitioning) return;
+        
+        console.log(`🗺️ Indo para: ${targetMapId}`);
+        this.transitioning = true;
+        this.transitionAlpha = 0;
+        
+        // Fase 1: fade to black
+        const fadeOut = () => {
+            this.transitionAlpha += 0.05;
+            if (this.transitionAlpha >= 1) {
+                this.transitionAlpha = 1;
+                // Troca o mapa
+                this.loadMap(targetMapId, spawnX, spawnY);
+                // Fase 2: fade from black
+                setTimeout(fadeIn, 300);
+            } else {
+                requestAnimationFrame(fadeOut);
+            }
+        };
+        
+        const fadeIn = () => {
+            this.transitionAlpha -= 0.05;
+            if (this.transitionAlpha <= 0) {
+                this.transitionAlpha = 0;
+                this.transitioning = false;
+            } else {
+                requestAnimationFrame(fadeIn);
+            }
+        };
+        
+        fadeOut();
+    }
+    
     update(deltaTime) {
         this.input.update();
-
-         // ✅ NOVO: Tecla M muta/desmuta o áudio
+        
+        // Tecla M muta áudio
         const mPressed = this.input.isKeyDown('m');
         if (mPressed && this.mKeyReleased) {
             this.audio.toggleMute();
@@ -250,43 +358,10 @@ class Game {
             this.mKeyReleased = true;
         }
         
-        // ... resto do update existente ...
-        
-        this.player.update(deltaTime, this.input, this.tileMap);
-        
-        // ✅ NOVO: Som de passos quando está andando
-        const isMoving = this.input.getMovement().dx !== 0 || this.input.getMovement().dy !== 0;
-        if (isMoving && !this.dialogueSystem.active && !this.craftingSystem.active && !this.inventoryUI.active) {
-            this.footstepTimer -= deltaTime;
-            if (this.footstepTimer <= 0) {
-                this.audio.playFootstep();
-                this.footstepTimer = this.footstepInterval;
-            }
-        } else {
-            this.footstepTimer = 0;
-        }
-        
-        // ✅ NOVO: Verifica hit apenas UMA VEZ por ataque
-        if (this.player.attacking && this.player.attackHitbox && !this.player.attackHitProcessed) {
-            this.player.attackHitProcessed = true;
-            this.audio.playAttack(); // ✅ Som de ataque
-            this.checkAttackHits();
-        }
-        
-        // ✅ NOVO: Atualiza cooldown do autosave
-        this.saveManager.update(deltaTime);
-        
-        // ✅ NOVO: Autosave periódico (a cada 30 segundos)
-        this.lastAutoSaveTime += deltaTime;
-        if (this.lastAutoSaveTime >= this.autoSaveInterval) {
-            this.lastAutoSaveTime = 0;
-            this.triggerAutoSave();
-        }
-        
-        // Tecla F5 salva manualmente
+        // Tecla F5 salva
         const f5Pressed = this.input.isKeyDown('f5');
         if (f5Pressed && this.f5KeyReleased) {
-            this.triggerAutoSave('💾 Save manual');
+            this.saveManager.save(this);
             this.f5KeyReleased = false;
         } else if (!f5Pressed) {
             this.f5KeyReleased = true;
@@ -294,7 +369,7 @@ class Game {
         
         // Tecla F9 abre menu
         const f9Pressed = this.input.isKeyDown('f9');
-        if (f9Pressed && this.f9KeyReleased && !this.dialogueSystem.active && !this.craftingSystem.active) {
+        if (f9Pressed && this.f9KeyReleased) {
             this.saveLoadUI.show();
             this.f9KeyReleased = false;
         } else if (!f9Pressed) {
@@ -327,20 +402,19 @@ class Game {
         
         this.player.update(deltaTime, this.input, this.tileMap);
         
-        // Verifica hit apenas UMA VEZ por ataque
-        if (this.player.attacking && this.player.attackHitbox && !this.player.attackHitProcessed) {
-            this.player.attackHitProcessed = true;
-            const killsBefore = this.countDeadEnemies();
-            this.checkAttackHits();
-            const killsAfter = this.countDeadEnemies();
-            
-            // ✅ NOVO: Autosave ao derrotar inimigo
-            if (killsAfter > killsBefore) {
-                this.triggerAutoSave('⚔️ Inimigo derrotado');
-            }
+        // ✅ NOVO: Verifica portal de transição
+        if (!this.transitioning) {
+            this.checkMapTransition();
         }
         
-        // Atualiza NPCs
+        // Ataque
+        if (this.player.attacking && this.player.attackHitbox && !this.player.attackHitProcessed) {
+            this.player.attackHitProcessed = true;
+            this.audio.playAttack();
+            this.checkAttackHits();
+        }
+        
+        // NPCs
         for (const npc of this.npcs) {
             const result = npc.update(this.player, this.input);
             if (result && result.type === 'dialogue') {
@@ -348,7 +422,7 @@ class Game {
             }
         }
         
-        // Atualiza forja
+        // Forja
         if (this.forge) {
             const result = this.forge.update(this.player, this.input);
             if (result && result.type === 'open_forge') {
@@ -357,45 +431,71 @@ class Game {
             }
         }
         
-        // Atualiza pickups
-        const pickupsBefore = this.pickups.filter(p => p.collected).length;
+        // Pickups
         for (const pickup of this.pickups) {
             const result = pickup.update(deltaTime, this.player);
             if (result && result.type === 'collected') {
                 this.inventory.add(result.item);
+                this.audio.playCollect();
             }
         }
-        const pickupsAfter = this.pickups.filter(p => p.collected).length;
         
-        // ✅ NOVO: Autosave ao coletar item
-        if (pickupsAfter > pickupsBefore) {
-            this.triggerAutoSave('📦 Item coletado');
-        }
-        
-        // Atualiza inimigos
+        // Inimigos
         for (const enemy of this.enemies) {
             enemy.update(deltaTime, this.player);
         }
         
-        // Atualiza sistemas
-        this.inventory.update(deltaTime);
-        
-        // ✅ NOVO: Detecta mudança no estado da quest
-        const currentQuestCompleted = this.questSystem.activeQuest?.completed || false;
-        if (this.lastQuestState === false && currentQuestCompleted) {
-            this.triggerAutoSave('✅ Missão concluída');
+        // Passos
+        const movement = this.input.getMovement();
+        const isMoving = movement.dx !== 0 || movement.dy !== 0;
+        if (isMoving) {
+            this.footstepTimer -= deltaTime;
+            if (this.footstepTimer <= 0) {
+                this.audio.playFootstep();
+                this.footstepTimer = this.footstepInterval;
+            }
+        } else {
+            this.footstepTimer = 0;
         }
-        this.lastQuestState = currentQuestCompleted;
         
+        // Sistemas
+        this.inventory.update(deltaTime);
         this.questSystem.update();
         this.craftingSystem.update(deltaTime);
         this.damageNumbers.update(deltaTime);
+        this.saveManager.update(deltaTime);
         
         this.updateCamera();
     }
     
-    countDeadEnemies() {
-        return this.enemies.filter(e => !e.alive).length;
+    // ✅ NOVO: Verifica se o jogador está em um portal
+    checkMapTransition() {
+        const px = this.player.x + this.player.width / 2;
+        const py = this.player.y + this.player.height / 2;
+        
+        if (this.currentMapId === 'aule_workshop') {
+            // Portal no lado direito da oficina
+            if (px > 38 * 32 && py > 11 * 32 && py < 14 * 32) {
+                if (this.input.isKeyDown('enter') && this.enterKeyReleased) {
+                    this.enterKeyReleased = false;
+                    // Vai para jardins, spawn no lado esquerdo
+                    this.changeMap('valinor_gardens', 2 * 32, 14 * 32);
+                }
+            }
+        } else if (this.currentMapId === 'valinor_gardens') {
+            // Portal no lado esquerdo dos jardins
+            if (px < 2 * 32 && py > 13 * 32 && py < 16 * 32) {
+                if (this.input.isKeyDown('enter') && this.enterKeyReleased) {
+                    this.enterKeyReleased = false;
+                    // Volta para oficina, spawn no lado direito
+                    this.changeMap('aule_workshop', 37 * 32, 12 * 32);
+                }
+            }
+        }
+        
+        if (!this.input.isKeyDown('enter')) {
+            this.enterKeyReleased = true;
+        }
     }
     
     checkAttackHits() {
@@ -407,8 +507,7 @@ class Game {
             
             if (this.boxCollision(ah, { x: enemy.x, y: enemy.y, width: enemy.width, height: enemy.height })) {
                 const result = enemy.takeDamage(damage);
-
-                this.audio.playHit(); 
+                this.audio.playHit();
                 
                 this.damageNumbers.add(
                     enemy.x + enemy.width / 2,
@@ -435,8 +534,6 @@ class Game {
     
     gainXP(amount) {
         this.playerXP += amount;
-        console.log(`✨ +${amount} XP (Total: ${this.playerXP}/${this.xpToNextLevel})`);
-        
         while (this.playerXP >= this.xpToNextLevel) {
             this.levelUp();
         }
@@ -450,12 +547,9 @@ class Game {
         this.player.maxHP += 10;
         this.player.hp = this.player.maxHP;
         this.player.baseDamage += 2;
+        
         this.audio.playLevelUp();
-        
         console.log(`🎉 LEVEL UP! Nível ${this.playerLevel}`);
-        
-        // ✅ NOVO: Autosave ao subir de nível
-        this.triggerAutoSave(`🎉 Nível ${this.playerLevel}!`);
     }
     
     updateCamera() {
@@ -501,7 +595,65 @@ class Game {
         this.equipment.render(this.ctx, this.canvas);
         this.renderPlayerHUD();
         
+        // ✅ NOVO: Mostra nome do mapa atual
+        this.renderMapName();
+        
+        // ✅ NOVO: Mostra dica de portal quando perto
+        this.renderPortalHint();
+        
         this.dialogueSystem.render(this.ctx, this.canvas);
+        
+        // ✅ NOVO: Renderiza transição (fade)
+        if (this.transitioning) {
+            this.ctx.fillStyle = `rgba(0, 0, 0, ${this.transitionAlpha})`;
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        }
+    }
+    
+    // ✅ NOVO: Mostra nome do mapa no topo
+    renderMapName() {
+        const ctx = this.ctx;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillRect(this.canvas.width / 2 - 120, 10, 240, 30);
+        
+        ctx.strokeStyle = '#ffd700';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(this.canvas.width / 2 - 120, 10, 240, 30);
+        
+        ctx.fillStyle = '#ffd700';
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.getMapName(), this.canvas.width / 2, 30);
+    }
+    
+    // ✅ NOVO: Dica de portal quando o jogador está perto
+    renderPortalHint() {
+        if (this.transitioning) return;
+        
+        const px = this.player.x + this.player.width / 2;
+        const py = this.player.y + this.player.height / 2;
+        let nearPortal = false;
+        
+        if (this.currentMapId === 'aule_workshop') {
+            if (px > 36 * 32 && py > 10 * 32 && py < 15 * 32) nearPortal = true;
+        } else if (this.currentMapId === 'valinor_gardens') {
+            if (px < 4 * 32 && py > 12 * 32 && py < 17 * 32) nearPortal = true;
+        }
+        
+        if (nearPortal) {
+            const ctx = this.ctx;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(this.canvas.width / 2 - 150, this.canvas.height - 80, 300, 40);
+            
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(this.canvas.width / 2 - 150, this.canvas.height - 80, 300, 40);
+            
+            ctx.fillStyle = '#ffd700';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('[ENTER] para atravessar o portal', this.canvas.width / 2, this.canvas.height - 55);
+        }
     }
     
     renderPlayerHUD() {

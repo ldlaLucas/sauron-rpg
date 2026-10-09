@@ -38,26 +38,27 @@ class Player {
         this.equipment = equipment;
     }
     
-    update(deltaTime, input, tileMap) {
+        update(deltaTime, input, tileMap) {
         this.speed = this.baseSpeed + (this.equipment ? this.equipment.getBonus('speed') : 0);
         
         // Atualiza timers
         this.hitFlash = Math.max(0, this.hitFlash - deltaTime * 4);
         this.attackCooldown = Math.max(0, this.attackCooldown - deltaTime);
         
-        // Atualiza ataque
+        // ✅ GARANTIA DE RESET DO ATAQUE
         if (this.attacking) {
             this.attackTimer -= deltaTime;
             if (this.attackTimer <= 0) {
-                // ✅ Ataque terminou - resetar tudo
                 this.attacking = false;
                 this.attackHitbox = null;
-                this.attackHitProcessed = false; // ✅ RESET AQUI!
+                this.attackHitProcessed = false;
+                console.log('✅ Ataque finalizado e resetado');
             }
         }
         
         // Iniciar ataque com ESPAÇO
         if (input.isKeyDown(' ') && !this.attacking && this.attackCooldown <= 0) {
+            console.log('⚔️ Tentando atacar...');
             this.startAttack();
         }
         
@@ -81,48 +82,34 @@ class Player {
             }
         }
     }
-    
-    startAttack() {
+
+         startAttack() {
+        console.log('⚔️ Player: Iniciando ataque!');
         this.attacking = true;
         this.attackTimer = this.attackDuration;
         this.attackCooldown = this.attackCooldownMax;
         
-        // ✅ IMPORTANTE: resetar flag para permitir 1 hit neste ataque
-        this.attackHitProcessed = false;
+        // CRUCIAL: Reseta a flag para permitir que este novo ataque cause dano
+        this.attackHitProcessed = false; 
         
-        // Calcula hitbox do ataque baseado na direção
         const centerX = this.x + this.width / 2;
         const centerY = this.y + this.height / 2;
         
         let hx, hy, hw, hh;
         
         if (this.direction === 'down') {
-            hx = centerX - 15;
-            hy = centerY + 10;
-            hw = 30;
-            hh = 25;
+            hx = centerX - 15; hy = centerY + 10; hw = 30; hh = 25;
         } else if (this.direction === 'up') {
-            hx = centerX - 15;
-            hy = centerY - 35;
-            hw = 30;
-            hh = 25;
+            hx = centerX - 15; hy = centerY - 35; hw = 30; hh = 25;
         } else if (this.direction === 'left') {
-            hx = centerX - 35;
-            hy = centerY - 15;
-            hw = 25;
-            hh = 30;
-        } else {
-            hx = centerX + 10;
-            hy = centerY - 15;
-            hw = 25;
-            hh = 30;
+            hx = centerX - 35; hy = centerY - 15; hw = 25; hh = 30;
+        } else { // right
+            hx = centerX + 10; hy = centerY - 15; hw = 25; hh = 30;
         }
         
         this.attackHitbox = { x: hx, y: hy, width: hw, height: hh };
-        
-        console.log(`⚔️ Mairon atacou na direção ${this.direction}`);
-    }
-    
+    }   
+   
     getAttackDamage() {
         let damage = this.baseDamage;
         

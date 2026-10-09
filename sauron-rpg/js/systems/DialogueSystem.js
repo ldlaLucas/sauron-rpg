@@ -5,8 +5,7 @@ class DialogueSystem {
         this.currentLine = 0;
         this.currentNPC = null;
         this.onDialogueEnd = null;
-        this.keyReleased = true;
-        this.dialogueEnded = false; // ✅ Nova flag
+        this.lastKeyState = false;
     }
     
     start(npc) {
@@ -20,8 +19,7 @@ class DialogueSystem {
         this.currentDialogue = npc.dialogue;
         this.currentLine = 0;
         this.currentNPC = npc;
-        this.dialogueEnded = false;
-        this.keyReleased = false; // ✅ Começar com tecla "pressionada" para evitar avanço imediato
+        this.lastKeyState = false;
         
         npc.startDialogue();
     }
@@ -29,69 +27,74 @@ class DialogueSystem {
     update(input) {
         if (!this.active) return;
         
-        const keyPressed = input.isKeyDown('enter') || input.isKeyDown('e');
+        const isKeyPressed = input.isKeyDown('enter') || input.isKeyDown('e');
         
-        // ✅ Sistema de debounce mais robusto
-        if (keyPressed && this.keyReleased) {
+        if (isKeyPressed && !this.lastKeyState) {
             this.next();
-            this.keyReleased = false;
-        } else if (!keyPressed && !this.keyReleased) {
-            // ✅ Só liberar após tecla ser solta
-            this.keyReleased = true;
+        }
+        
+        // ✅ CORREÇÃO: Só atualiza lastKeyState se ainda estiver ativo
+        if (this.active) {
+            this.lastKeyState = isKeyPressed;
+        } else {
+            this.lastKeyState = false;
         }
     }
     
     next() {
-        if (this.dialogueEnded) return;
+        // ✅ CORREÇÃO: Proteção contra null
+        if (!this.currentDialogue) {
+            console.log('⚠️ Diálogo já finalizado, ignorando next()');
+            return;
+        }
         
         this.currentLine++;
         
-        if (this.currentLine >= this.currentDialogue.lines.length) {
-            this.end();
-        }
-
-         // ✅ NOVO: Som de blip ao avançar diálogo
         if (window.game && window.game.audio) {
             window.game.audio.playDialogueBlip();
         }
         
-        this.currentLine++;
+        console.log(`💬 Linha do diálogo: ${this.currentLine}/${this.currentDialogue.lines.length}`);
         
         if (this.currentLine >= this.currentDialogue.lines.length) {
             this.end();
+            return; // ✅ CORREÇÃO: Sai imediatamente após end()
         }
     }
     
-    end() {
-        if (this.dialogueEnded) {
-            console.log('⚠️ Diálogo já foi encerrado');
-            return;
-        }
+       end() {
+        if (!this.active) return;
         
-        console.log('✅ Encerrando diálogo');
-        this.dialogueEnded = true;
+        console.log('✅ Encerrando diálogo e limpando estados');
         this.active = false;
+        this.dialogueEnded = true;
         
         const npc = this.currentNPC;
-        this.currentDialogue = null;
-        this.currentLine = 0;
-        this.currentNPC = null;
         
-        // ✅ Chamar endDialogue do NPC
+        // Limpa tudo ANTES de chamar callbacks
+        this.currentNPC = null;
+        this.currentLine = 0;
+        this.lastKeyState = false;
+        
+        // ✅ CORREÇÃO: Deixa o NPC chamar o callback (evita duplicação)
         if (npc) {
             npc.endDialogue();
         }
         
-        // ✅ Chamar callback global
-        if (this.onDialogueEnd) {
-            this.onDialogueEnd();
-        }
+        // ❌ REMOVIDO: this.onDialogueEnd() - não chamar aqui
+        
+        // Limpa currentDialogue POR ÚLTIMO
+        this.currentDialogue = null;
     }
     
     render(ctx, canvas) {
-        if (!this.active) return;
+        if (!this.active || !this.currentDialogue) return;
+        
+        // Proteção extra
+        if (this.currentLine >= this.currentDialogue.lines.length) return;
         
         const line = this.currentDialogue.lines[this.currentLine];
+        if (!line) return;
         
         // Fundo
         ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';

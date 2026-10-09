@@ -43,48 +43,81 @@ class AudioManager {
     // MÚSICA AMBIENTE (PROCEDURAL)
     // ============================================
     
-    playValinorAmbience() {
-        if (!this.initialized) this.init();
+        playValinorAmbience() {
+        if (!this.initialized) {
+            this.init();
+        }
+        if (!this.initialized) return;
+        
         this.stopMusic();
         
         console.log('🎵 Tocando ambientação de Valinor');
         
-        // Criar uma ambientação etérea com acordes suaves
         const playChord = () => {
-            if (!this.currentMusic) return;
+            if (!this.currentMusic || !this.currentMusic.active) return;
+            if (!this.audioContext) return;
             
-            // Acorde em Dó maior (C, E, G) - soa sereno e luminoso
-            const notes = [261.63, 329.63, 392.00]; // C4, E4, G4
+            // Acorde suave em Dó maior
+            const notes = [261.63, 329.63, 392.00];
+            const now = this.audioContext.currentTime;
             
             notes.forEach((freq, i) => {
-                const osc = this.audioContext.createOscillator();
-                const gain = this.audioContext.createGain();
-                
-                osc.type = 'sine';
-                osc.frequency.value = freq;
-                
-                // Fade in suave
-                gain.gain.setValueAtTime(0, this.audioContext.currentTime);
-                gain.gain.linearRampToValueAtTime(0.08, this.audioContext.currentTime + 2);
-                gain.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + 6);
-                
-                osc.connect(gain);
-                gain.connect(this.musicGain);
-                
-                osc.start(this.audioContext.currentTime + i * 0.1);
-                osc.stop(this.audioContext.currentTime + 6);
-                
-                this.musicNodes.push(osc);
+                try {
+                    const osc = this.audioContext.createOscillator();
+                    const gain = this.audioContext.createGain();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    
+                    gain.gain.setValueAtTime(0, now);
+                    gain.gain.linearRampToValueAtTime(0.06, now + 2);
+                    gain.gain.linearRampToValueAtTime(0, now + 6);
+                    
+                    osc.connect(gain);
+                    gain.connect(this.musicGain);
+                    
+                    osc.start(now + i * 0.15);
+                    osc.stop(now + 6.5);
+                    
+                    this.musicNodes.push(osc);
+                } catch (e) {
+                    // Ignora erros de nós já finalizados
+                }
             });
+            
+            // Segunda camada: nota grave suave
+            try {
+                const bass = this.audioContext.createOscillator();
+                const bassGain = this.audioContext.createGain();
+                
+                bass.type = 'sine';
+                bass.frequency.value = 130.81; // C3
+                
+                bassGain.gain.setValueAtTime(0, now);
+                bassGain.gain.linearRampToValueAtTime(0.03, now + 1);
+                bassGain.gain.linearRampToValueAtTime(0, now + 7);
+                
+                bass.connect(bassGain);
+                bassGain.connect(this.musicGain);
+                
+                bass.start(now);
+                bass.stop(now + 7.5);
+                
+                this.musicNodes.push(bass);
+            } catch (e) {}
         };
         
         this.currentMusic = { active: true };
+        
+        // Toca imediatamente
         playChord();
         
-        // Repetir a cada 5 segundos
+        // Repete a cada 5 segundos
         this.musicInterval = setInterval(() => {
             if (this.currentMusic && this.currentMusic.active) {
                 playChord();
+            } else {
+                clearInterval(this.musicInterval);
             }
         }, 5000);
     }

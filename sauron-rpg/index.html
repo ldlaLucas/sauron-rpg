@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sauron RPG - MVP</title>
+    <link rel="icon" href="data:,">
     <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
@@ -11,7 +12,6 @@
         <canvas id="gameCanvas"></canvas>
         <div id="ui-layer"></div>
         
-        <!-- UI da Forja -->
         <div id="forge-ui">
             <div class="forge-container">
                 <div class="forge-header">
@@ -22,7 +22,6 @@
             </div>
         </div>
         
-        <!-- UI do Inventário -->
         <div id="inventory-ui">
             <div class="inventory-container">
                 <div class="inventory-header">
@@ -33,7 +32,6 @@
             </div>
         </div>
         
-        <!-- UI de Save/Load -->
         <div id="save-load-ui">
             <div class="save-load-container">
                 <div class="save-load-header">
@@ -49,7 +47,6 @@
         </div>
     </div>
     
-    <!-- Entidades -->
     <script src="js/entities/Entity.js"></script>
     <script src="js/entities/Pickup.js"></script>
     <script src="js/entities/NPC.js"></script>
@@ -58,7 +55,6 @@
     <script src="js/entities/TrainingDummy.js"></script>
     <script src="js/entities/Player.js"></script>
     
-    <!-- Sistemas -->
     <script src="js/systems/DialogueSystem.js"></script>
     <script src="js/systems/InventorySystem.js"></script>
     <script src="js/systems/QuestSystem.js"></script>
@@ -66,21 +62,17 @@
     <script src="js/systems/EquipmentSystem.js"></script>
     <script src="js/systems/DamageNumberSystem.js"></script>
     
-    <!-- Core -->
     <script src="js/core/SaveManager.js"></script>
-    <script src="js/core/AudioManager.js"></script> <!-- ✅ NOVO -->
+    <script src="js/core/AudioManager.js"></script>
     <script src="js/core/GameLoop.js"></script>
     <script src="js/core/InputManager.js"></script>
     
-    <!-- UI -->
     <script src="js/ui/ForgeUI.js"></script>
     <script src="js/ui/InventoryUI.js"></script>
     <script src="js/ui/SaveLoadUI.js"></script>
     
-    <!-- Mundo -->
     <script src="js/world/TileMap.js"></script>
     
-    <!-- Game (por último, pois depende de tudo acima) -->
     <script src="js/core/Game.js"></script>
     <script src="js/main.js"></script>
 </body>
