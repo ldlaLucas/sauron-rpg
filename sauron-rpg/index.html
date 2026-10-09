@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sauron RPG - MVP</title>
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-layer"></div>
+        
+        <!-- UI da Forja -->
+        <div id="forge-ui">
+            <div class="forge-container">
+                <div class="forge-header">
+                    <div class="forge-title">🔨 FORJA DE AULË</div>
+                    <button id="forge-close" class="forge-close">FECHAR</button>
+                </div>
+                <div id="forge-recipes"></div>
+            </div>
+        </div>
+        
+        <!-- UI do Inventário -->
+        <div id="inventory-ui">
+            <div class="inventory-container">
+                <div class="inventory-header">
+                    <div class="inventory-title">📦 INVENTÁRIO</div>
+                    <button id="inventory-close" class="inventory-close">FECHAR</button>
+                </div>
+                <div id="inventory-items"></div>
+            </div>
+        </div>
+        
+        <!-- UI de Save/Load -->
+        <div id="save-load-ui">
+            <div class="save-load-container">
+                <div class="save-load-header">
+                    <div class="save-load-title">💾 SALVAR/CARREGAR</div>
+                    <button id="save-load-close" class="save-load-close">FECHAR</button>
+                </div>
+                <div id="save-info"></div>
+                <div class="save-load-buttons">
+                    <button id="save-btn" class="save-btn">💾 SALVAR JOGO</button>
+                    <button id="load-btn" class="load-btn">📂 CARREGAR JOGO</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Entidades -->
+    <script src="js/entities/Entity.js"></script>
+    <script src="js/entities/Pickup.js"></script>
+    <script src="js/entities/NPC.js"></script>
+    <script src="js/entities/ForgeObject.js"></script>
+    <script src="js/entities/Enemy.js"></script>
+    <script src="js/entities/TrainingDummy.js"></script>
+    <script src="js/entities/Player.js"></script>
+    
+    <!-- Sistemas -->
+    <script src="js/systems/DialogueSystem.js"></script>
+    <script src="js/systems/InventorySystem.js"></script>
+    <script src="js/systems/QuestSystem.js"></script>
+    <script src="js/systems/CraftingSystem.js"></script>
+    <script src="js/systems/EquipmentSystem.js"></script>
+    <script src="js/systems/DamageNumberSystem.js"></script>
+    
+    <!-- Core -->
+    <script src="js/core/SaveManager.js"></script>
+    <script src="js/core/AudioManager.js"></script> <!-- ✅ NOVO -->
+    <script src="js/core/GameLoop.js"></script>
+    <script src="js/core/InputManager.js"></script>
+    
+    <!-- UI -->
+    <script src="js/ui/ForgeUI.js"></script>
+    <script src="js/ui/InventoryUI.js"></script>
+    <script src="js/ui/SaveLoadUI.js"></script>
+    
+    <!-- Mundo -->
+    <script src="js/world/TileMap.js"></script>
+    
+    <!-- Game (por último, pois depende de tudo acima) -->
+    <script src="js/core/Game.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
