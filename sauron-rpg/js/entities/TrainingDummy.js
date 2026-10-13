@@ -3,15 +3,35 @@ class TrainingDummy extends Enemy {
         super(x, y, 32, 40, {
             name: 'Boneco de Treino',
             hp: 50,
-            damage: 0, // Não ataca de volta (é um dummy!)
+            damage: 0,
             defense: 0,
             xpReward: 15,
             speed: 0,
+            patrolSpeed: 0,
+            chaseSpeed: 0,
             attackRange: 0,
+            detectionRange: 0,  // ✅ Não detecta o jogador
             attackCooldown: 0,
             respawnTime: 4,
             color: '#8b5a2b'
         });
+    }
+    
+    // ✅ Sobrescreve o update para NÃO executar IA
+    update(deltaTime, player, tileMap) {
+        // Se morto, conta respawn
+        if (!this.alive) {
+            this.respawnTimer -= deltaTime;
+            if (this.respawnTimer <= 0) {
+                this.respawn();
+            }
+            return null;
+        }
+        
+        // Atualiza apenas timers visuais
+        this.hitFlash = Math.max(0, this.hitFlash - deltaTime * 4);
+        
+        return null;
     }
     
     render(ctx, camera) {
@@ -61,8 +81,8 @@ class TrainingDummy extends Enemy {
         
         // Nome
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 10px Arial';
+        ctx.font = 'bold 9px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(this.name, screenX + 16, barY - 3);
+        ctx.fillText(this.name, screenX + 16, barY - 2);
     }
 }

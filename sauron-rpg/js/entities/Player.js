@@ -201,7 +201,7 @@ class Player {
         }
     }
     
-    renderWeapon(ctx, screenX, screenY) {
+        renderWeapon(ctx, screenX, screenY) {
         if (!this.equipment) return;
         
         const weapon = this.equipment.getEquippedWeapon();
@@ -254,6 +254,22 @@ class Player {
             ctx.fillRect(wx, wy, 3, 10);
             ctx.fillStyle = '#6a6a6a';
             ctx.fillRect(wx - 3, wy - 3, 9, 5);
+        } else if (weapon.visual === 'elven_sword') { // ✅ NOVO
+            // Lâmina azul brilhante
+            ctx.fillStyle = '#87ceeb';
+            ctx.fillRect(wx + 1, wy - 6, 2, 12);
+            
+            // Brilho
+            ctx.fillStyle = 'rgba(135, 206, 235, 0.5)';
+            ctx.fillRect(wx, wy - 7, 4, 14);
+            
+            // Cabo prateado
+            ctx.fillStyle = '#c0c0c0';
+            ctx.fillRect(wx, wy + 6, 4, 3);
+            
+            // Detalhe dourado
+            ctx.fillStyle = '#ffd700';
+            ctx.fillRect(wx + 1, wy + 5, 2, 1);
         }
     }
 }

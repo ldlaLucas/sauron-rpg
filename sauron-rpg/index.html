@@ -12,6 +12,24 @@
         <canvas id="gameCanvas"></canvas>
         <div id="ui-layer"></div>
         
+        <!-- ✅ NOVO: Botão para ativar áudio -->
+        <button id="audio-toggle" style="
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #ffd700;
+            border: 2px solid #ffd700;
+            padding: 6px 10px;
+            border-radius: 3px;
+            font-size: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 1000;
+            font-family: Arial, sans-serif;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+        ">🔊 Ativar Áudio</button>
+        
         <div id="forge-ui">
             <div class="forge-container">
                 <div class="forge-header">
@@ -49,10 +67,13 @@
     
     <script src="js/entities/Entity.js"></script>
     <script src="js/entities/Pickup.js"></script>
+    <script src="js/entities/CrystalPickup.js"></script> <!-- ✅ NOVO -->
     <script src="js/entities/NPC.js"></script>
+    <script src="js/entities/Celebrimbor.js"></script> <!-- ✅ NOVO -->
     <script src="js/entities/ForgeObject.js"></script>
     <script src="js/entities/Enemy.js"></script>
     <script src="js/entities/TrainingDummy.js"></script>
+    <script src="js/entities/CorruptedShadow.js"></script> <!-- ✅ NOVO -->
     <script src="js/entities/Player.js"></script>
     
     <script src="js/systems/DialogueSystem.js"></script>
@@ -72,6 +93,7 @@
     <script src="js/ui/SaveLoadUI.js"></script>
     
     <script src="js/world/TileMap.js"></script>
+    
     
     <script src="js/core/Game.js"></script>
     <script src="js/main.js"></script>

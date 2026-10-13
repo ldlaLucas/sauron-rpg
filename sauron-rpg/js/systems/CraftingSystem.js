@@ -6,7 +6,7 @@ class CraftingSystem {
         this.notifications = [];
     }
     
-    loadRecipes() {
+       loadRecipes() {
         return [
             {
                 id: 'apprentice_tool',
@@ -40,9 +40,20 @@ class CraftingSystem {
                 },
                 result: 'stone_hammer',
                 quality: 'Good'
+            },
+            {
+                id: 'elven_blade', // ✅ NOVO
+                name: 'Lâmina Élfica',
+                description: 'Uma lâmina refinada com cristal de Valinor. Brilha com luz própria.',
+                ingredients: {
+                    iron: 2,
+                    valinor_crystal: 2
+                },
+                result: 'elven_blade',
+                quality: 'Excellent'
             }
         ];
-    }
+    } 
     
     open() {
         this.active = true;

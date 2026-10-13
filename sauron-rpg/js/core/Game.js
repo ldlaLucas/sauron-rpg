@@ -47,19 +47,53 @@ class Game {
         this.currentMapId = 'aule_workshop';
         this.transitioning = false;
         this.transitionAlpha = 0;
+
+        this.corruptedShadows = []; // ✅ NOVO: lista de sombras
     }
     
-    init() {
+        init() {
         console.log('🎮 Sauron RPG - Inicializando...');
         
-        // Cria o jogador PRIMEIRO
+        // 1. Cria o jogador PRIMEIRO
         const startX = 3 * 32;
         const startY = 20 * 32;
         this.player = new Player(startX, startY);
         this.player.setEquipmentSystem(this.equipment);
         
-        // Carrega o primeiro mapa
-        this.loadMap('aule_workshop');
+        // 2. Carrega o mapa padrão da Oficina internamente (sem arquivo externo)
+        this.tileMap = new TileMap(32); 
+        
+        // 3. Adiciona o portal visual no lado direito da oficina
+        if (!this.tileMap.decorations) {
+            this.tileMap.decorations = [];
+        }
+        this.tileMap.decorations.push({
+            type: 'portal',
+            x: 38 * 32,
+            y: 11 * 32
+        });
+        
+        // 4. Configura as entidades da oficina (Forja, Aulë, Bonecos, etc)
+        this.setupWorkshopEntities();
+
+            // No método init(), após criar Aulë
+    this.celebrimborQuestStarted = false;
+    
+    // No método update(), adicione verificação de missão do Celebrimbor
+    if (this.questGivenByCelebrimbor && !this.celebrimborQuestStarted) {
+        this.celebrimborQuestStarted = true;
+        
+        this.questSystem.startQuest({
+            id: 'crystals_of_valinor',
+            title: 'Cristais de Valinor',
+            description: 'Colete cristais para Celebrimbor',
+            objectives: [
+                { type: 'collect', item: 'valinor_crystal', amount: 2 }
+            ]
+        });
+        
+        this.triggerAutoSave('📜 Nova missão: Cristais de Valinor');
+    }
         
         // Listeners de save
         window.addEventListener('beforeunload', () => {
@@ -72,12 +106,11 @@ class Game {
             }
         });
         
-         // ✅ Inicializa áudio na primeira interação
+        // Inicializa áudio na primeira interação do usuário
         const initAudioOnClick = () => {
             if (!this.audioInitialized) {
                 try {
                     this.audio.init();
-                    // Pequeno delay para garantir que o contexto está pronto
                     setTimeout(() => {
                         this.audio.playValinorAmbience();
                         this.currentMusicState = 'exploration';
@@ -95,33 +128,34 @@ class Game {
         window.addEventListener('click', initAudioOnClick);
         window.addEventListener('keydown', initAudioOnClick);
         
+        // Inicia o game loop
         this.running = true;
         this.gameLoop = new GameLoop(this);
         this.gameLoop.start();
         
-        console.log('✅ Jogo iniciado!');
+        console.log('✅ Jogo iniciado com sucesso!');
+        console.log('🔊 Clique na tela para ativar o áudio.');
+        console.log('🗺️ Vá até o lado direito do mapa para encontrar o portal.');
     }
     
     // ✅ NOVO: Função simples de troca de mapa
-    loadMap(mapId, spawnX = null, spawnY = null) {
+        loadMap(mapId, spawnX = null, spawnY = null) {
         console.log(`🗺️ Carregando mapa: ${mapId}`);
         
         this.currentMapId = mapId;
         
-        // Limpa entidades do mapa anterior
         this.pickups = [];
         this.enemies = [];
+        this.corruptedShadows = []; // ✅ Limpa sombras
         
-        // Cria o novo TileMap conforme o mapa
         if (mapId === 'aule_workshop') {
-            this.tileMap = new TileMap(32); // mapa padrão
+            this.tileMap = new TileMap(32);
             this.setupWorkshopEntities();
         } else if (mapId === 'valinor_gardens') {
             this.tileMap = this.createGardensMap();
             this.setupGardensEntities();
         }
         
-        // Move o jogador para o spawn
         if (spawnX !== null && spawnY !== null) {
             this.player.x = spawnX;
             this.player.y = spawnY;
@@ -288,10 +322,62 @@ class Game {
         return new TileMap(32, tiles, width, height, decorations);
     }
     
-    // ✅ NOVO: Configura entidades dos Jardins
-    setupGardensEntities() {
-        this.forge = null; // Sem forja nos jardins
-        this.npcs = []; // Sem NPCs nos jardins por enquanto
+         setupGardensEntities() {
+        this.forge = null;
+        
+        // Celebrimbor (código existente)
+        const celebrimborX = 25 * 32;
+        const celebrimborY = 10 * 32;
+        const celebrimbor = new Celebrimbor(celebrimborX, celebrimborY);
+        this.npcs.push(celebrimbor);
+        
+        // Cristais (código existente)
+        const crystalPositions = [
+            { x: 22 * 32, y: 17 * 32 },
+            { x: 26 * 32, y: 19 * 32 },
+            { x: 24 * 32, y: 21 * 32 }
+        ];
+        
+        for (const pos of crystalPositions) {
+            if (!this.tileMap.isSolid(pos.x + 12, pos.y + 12)) {
+                this.pickups.push(new CrystalPickup(pos.x, pos.y));
+            }
+        }
+        
+        // ✅ NOVO: Sombras Corrompidas nos jardins (influência de Melkor)
+        this.spawnCorruptedShadows();
+    }
+    
+    // ✅ NOVO: Spawn das sombras nos jardins
+    spawnCorruptedShadows() {
+        this.corruptedShadows = [];
+        
+        // Sombra 1: patrulha na área norte (flores)
+        const shadow1 = new CorruptedShadow(10 * 32, 6 * 32, [
+            { x: 10 * 32, y: 6 * 32 },
+            { x: 14 * 32, y: 6 * 32 },
+            { x: 14 * 32, y: 8 * 32 },
+            { x: 10 * 32, y: 8 * 32 }
+        ]);
+        this.corruptedShadows.push(shadow1);
+        
+        // Sombra 2: patrulha na área sul (estátuas)
+        const shadow2 = new CorruptedShadow(38 * 32, 24 * 32, [
+            { x: 38 * 32, y: 24 * 32 },
+            { x: 42 * 32, y: 24 * 32 },
+            { x: 42 * 32, y: 26 * 32 },
+            { x: 38 * 32, y: 26 * 32 }
+        ]);
+        this.corruptedShadows.push(shadow2);
+        
+        // Sombra 3: patrulha perto do lago
+        const shadow3 = new CorruptedShadow(30 * 32, 18 * 32, [
+            { x: 30 * 32, y: 18 * 32 },
+            { x: 30 * 32, y: 22 * 32 }
+        ]);
+        this.corruptedShadows.push(shadow3);
+        
+        console.log(`👤 ${this.corruptedShadows.length} Sombras Corrompidas spawnadas`);
     }
     
     spawnPickups() {
@@ -346,10 +432,10 @@ class Game {
         fadeOut();
     }
     
-    update(deltaTime) {
+        update(deltaTime) {
         this.input.update();
-        
-        // Tecla M muta áudio
+
+        // === TECLA M (mute) ===
         const mPressed = this.input.isKeyDown('m');
         if (mPressed && this.mKeyReleased) {
             this.audio.toggleMute();
@@ -357,8 +443,8 @@ class Game {
         } else if (!mPressed) {
             this.mKeyReleased = true;
         }
-        
-        // Tecla F5 salva
+
+        // === TECLA F5 (save manual) ===
         const f5Pressed = this.input.isKeyDown('f5');
         if (f5Pressed && this.f5KeyReleased) {
             this.saveManager.save(this);
@@ -366,17 +452,17 @@ class Game {
         } else if (!f5Pressed) {
             this.f5KeyReleased = true;
         }
-        
-        // Tecla F9 abre menu
+
+        // === TECLA F9 (menu save/load) ===
         const f9Pressed = this.input.isKeyDown('f9');
-        if (f9Pressed && this.f9KeyReleased) {
+        if (f9Pressed && this.f9KeyReleased && !this.dialogueSystem.active && !this.craftingSystem.active) {
             this.saveLoadUI.show();
             this.f9KeyReleased = false;
         } else if (!f9Pressed) {
             this.f9KeyReleased = true;
         }
-        
-        // Tecla I inventário
+
+        // === TECLA I (inventário) ===
         const iPressed = this.input.isKeyDown('i');
         if (iPressed && this.iKeyReleased && !this.dialogueSystem.active && !this.craftingSystem.active) {
             this.inventoryUI.toggle();
@@ -384,45 +470,47 @@ class Game {
         } else if (!iPressed) {
             this.iKeyReleased = true;
         }
-        
+
+        // === Pausas de interface ===
         if (this.saveLoadUI.active) return;
         if (this.inventoryUI.active) return;
-        
+
         if (this.dialogueSystem.active) {
             this.dialogueSystem.update(this.input);
             return;
         }
-        
+
         if (this.craftingSystem.active) {
             if (this.input.isKeyDown('escape')) {
                 this.forgeUI.hide();
             }
             return;
         }
-        
-        this.player.update(deltaTime, this.input, this.tileMap);
-        
-        // ✅ NOVO: Verifica portal de transição
+
+        // === Transição de mapa (usa this.transitioning, NAO mapManager) ===
         if (!this.transitioning) {
             this.checkMapTransition();
         }
-        
-        // Ataque
+
+        // === Atualiza jogador ===
+        this.player.update(deltaTime, this.input, this.tileMap);
+
+        // === Ataque (1 hit por ataque) ===
         if (this.player.attacking && this.player.attackHitbox && !this.player.attackHitProcessed) {
             this.player.attackHitProcessed = true;
             this.audio.playAttack();
             this.checkAttackHits();
         }
-        
-        // NPCs
+
+        // === NPCs ===
         for (const npc of this.npcs) {
             const result = npc.update(this.player, this.input);
             if (result && result.type === 'dialogue') {
                 this.dialogueSystem.start(result.npc);
             }
         }
-        
-        // Forja
+
+        // === Forja ===
         if (this.forge) {
             const result = this.forge.update(this.player, this.input);
             if (result && result.type === 'open_forge') {
@@ -430,8 +518,8 @@ class Game {
                 this.forgeUI.show();
             }
         }
-        
-        // Pickups
+
+        // === Pickups ===
         for (const pickup of this.pickups) {
             const result = pickup.update(deltaTime, this.player);
             if (result && result.type === 'collected') {
@@ -439,13 +527,18 @@ class Game {
                 this.audio.playCollect();
             }
         }
-        
-        // Inimigos
+
+        // === Bonecos de treino (estáticos) — passa tileMap ===
         for (const enemy of this.enemies) {
-            enemy.update(deltaTime, this.player);
+            enemy.update(deltaTime, this.player, this.tileMap);
         }
-        
-        // Passos
+
+        // === Sombras Corrompidas (com IA) — passa tileMap ===
+        for (const shadow of this.corruptedShadows) {
+            shadow.update(deltaTime, this.player, this.tileMap);
+        }
+
+        // === Passos ===
         const movement = this.input.getMovement();
         const isMoving = movement.dx !== 0 || movement.dy !== 0;
         if (isMoving) {
@@ -457,14 +550,14 @@ class Game {
         } else {
             this.footstepTimer = 0;
         }
-        
-        // Sistemas
+
+        // === Sistemas ===
         this.inventory.update(deltaTime);
         this.questSystem.update();
         this.craftingSystem.update(deltaTime);
         this.damageNumbers.update(deltaTime);
         this.saveManager.update(deltaTime);
-        
+
         this.updateCamera();
     }
     
@@ -498,10 +591,11 @@ class Game {
         }
     }
     
-    checkAttackHits() {
+        checkAttackHits() {
         const ah = this.player.attackHitbox;
         const damage = this.player.getAttackDamage();
         
+        // Bonecos de treino
         for (const enemy of this.enemies) {
             if (!enemy.alive) continue;
             
@@ -518,6 +612,28 @@ class Game {
                 
                 if (result.died) {
                     this.gainXP(result.xp);
+                }
+            }
+        }
+        
+        // ✅ NOVO: Sombras corrompidas
+        for (const shadow of this.corruptedShadows) {
+            if (!shadow.alive) continue;
+            
+            if (this.boxCollision(ah, { x: shadow.x, y: shadow.y, width: shadow.width, height: shadow.height })) {
+                const result = shadow.takeDamage(damage);
+                this.audio.playHit();
+                
+                this.damageNumbers.add(
+                    shadow.x + shadow.width / 2,
+                    shadow.y,
+                    result.damage,
+                    '#ffeb3b'
+                );
+                
+                if (result.died) {
+                    this.gainXP(result.xp);
+                    this.audio.playCollect(); // Som de vitória
                 }
             }
         }
@@ -563,7 +679,7 @@ class Game {
         this.camera.y = Math.max(0, Math.min(this.camera.y, maxY));
     }
     
-    render() {
+       render() {
         this.ctx.fillStyle = '#000';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
@@ -575,6 +691,11 @@ class Game {
         
         for (const enemy of this.enemies) {
             enemy.render(this.ctx, this.camera);
+        }
+        
+        // ✅ NOVO: Renderiza sombras corrompidas
+        for (const shadow of this.corruptedShadows) {
+            shadow.render(this.ctx, this.camera);
         }
         
         if (this.forge) {
@@ -595,15 +716,11 @@ class Game {
         this.equipment.render(this.ctx, this.canvas);
         this.renderPlayerHUD();
         
-        // ✅ NOVO: Mostra nome do mapa atual
         this.renderMapName();
-        
-        // ✅ NOVO: Mostra dica de portal quando perto
         this.renderPortalHint();
         
         this.dialogueSystem.render(this.ctx, this.canvas);
         
-        // ✅ NOVO: Renderiza transição (fade)
         if (this.transitioning) {
             this.ctx.fillStyle = `rgba(0, 0, 0, ${this.transitionAlpha})`;
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);

@@ -50,21 +50,17 @@ class InventorySystem {
     }
     
     getItemName(type) {
-        // ✅ Nomes de materiais
-        const materialNames = {
+        const names = {
             'iron': 'Ferro',
             'wood': 'Madeira',
-            'stone': 'Pedra'
-        };
-        
-        // ✅ Nomes de equipamentos (vem do EquipmentSystem se disponível)
-        const equipmentNames = {
+            'stone': 'Pedra',
+            'valinor_crystal': 'Cristal de Valinor', // ✅ NOVO
             'apprentice_tool': 'Ferramenta de Aprendiz',
             'iron_sword': 'Espada de Ferro',
-            'stone_hammer': 'Martelo de Pedra'
+            'stone_hammer': 'Martelo de Pedra',
+            'elven_blade': 'Lâmina Élfica' // ✅ NOVO
         };
-        
-        return materialNames[type] || equipmentNames[type] || type;
+        return names[type] || type;
     }
     
     getItemColor(type) {
@@ -72,9 +68,11 @@ class InventorySystem {
             'iron': '#b0b0b0',
             'wood': '#a0703c',
             'stone': '#9a9a9a',
+            'valinor_crystal': '#87ceeb', // ✅ NOVO
             'apprentice_tool': '#ffd700',
             'iron_sword': '#d0d0d0',
-            'stone_hammer': '#6a6a6a'
+            'stone_hammer': '#6a6a6a',
+            'elven_blade': '#4a90e2' // ✅ NOVO
         };
         return colors[type] || '#fff';
     }
@@ -147,14 +145,16 @@ class InventorySystem {
         ctx.globalAlpha = 1;
     }
     
-    getItemIcon(type) {
+        getItemIcon(type) {
         const icons = {
             'iron': '🔩',
             'wood': '🪵',
             'stone': '🪨',
+            'valinor_crystal': '💎', // ✅ NOVO
             'apprentice_tool': '🔧',
             'iron_sword': '⚔️',
-            'stone_hammer': '🔨'
+            'stone_hammer': '🔨',
+            'elven_blade': '🗡️' // ✅ NOVO
         };
         return icons[type] || '📦';
     }

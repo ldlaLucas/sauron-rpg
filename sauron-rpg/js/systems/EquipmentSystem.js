@@ -78,7 +78,7 @@ class EquipmentSystem {
         }
     }
     
-    getItemData(itemId) {
+        getItemData(itemId) {
         const items = {
             'apprentice_tool': {
                 name: 'Ferramenta de Aprendiz',
@@ -100,6 +100,13 @@ class EquipmentSystem {
                 bonuses: { damage: 15, speed: -2 },
                 description: 'Pesado, mas eficaz.',
                 visual: 'hammer'
+            },
+            'elven_blade': { // ✅ NOVO
+                name: 'Lâmina Élfica',
+                slot: 'weapon',
+                bonuses: { damage: 18, speed: 3 },
+                description: 'Lâmina refinada com cristal de Valinor.',
+                visual: 'elven_sword'
             }
         };
         

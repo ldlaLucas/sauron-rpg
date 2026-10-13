@@ -8,24 +8,42 @@ class Enemy extends Entity {
         this.damage = data.damage;
         this.defense = data.defense;
         this.xpReward = data.xpReward;
-        this.speed = data.speed || 0;
+        this.speed = data.speed || 60;
+        this.patrolSpeed = data.patrolSpeed || 40;
+        this.chaseSpeed = data.chaseSpeed || 80;
         this.attackRange = data.attackRange || 40;
+        this.detectionRange = data.detectionRange || 150;
         this.attackCooldown = 0;
         this.attackCooldownMax = data.attackCooldown || 1.5;
         
-        this.state = 'idle'; // idle, attacking, hurt, dead
+        // ✅ IA - Máquina de estados
+        this.state = 'idle';
         this.stateTimer = 0;
         this.alive = true;
-        this.respawnTime = data.respawnTime || 5;
+        this.respawnTime = data.respawnTime || 10;
         this.respawnTimer = 0;
+        
+        // Posição original (para retorno)
         this.originalX = x;
         this.originalY = y;
+        this.homeRadius = data.homeRadius || 150;
         
+        // Patrulha
+        this.patrolPoints = data.patrolPoints || [];
+        this.currentPatrolIndex = 0;
+        this.patrolWaitTime = 0;
+        
+        // Visual
         this.color = data.color || '#aa3333';
         this.hitFlash = 0;
+        this.direction = 'down';
+        
+        // Animação simples
+        this.animTimer = 0;
+        this.animFrame = 0;
     }
     
-    update(deltaTime, player) {
+    update(deltaTime, player, tileMap) {
         // Se morto, conta respawn
         if (!this.alive) {
             this.respawnTimer -= deltaTime;
@@ -37,19 +55,210 @@ class Enemy extends Entity {
         
         // Atualiza timers
         this.stateTimer -= deltaTime;
-        this.attackCooldown -= deltaTime;
+        this.attackCooldown = Math.max(0, this.attackCooldown - deltaTime);
         this.hitFlash = Math.max(0, this.hitFlash - deltaTime * 4);
+        this.animTimer += deltaTime;
         
-        // Máquina de estados simples
-        if (this.state === 'hurt' && this.stateTimer <= 0) {
-            this.state = 'idle';
+        // Atualiza animação
+        if (this.animTimer > 0.2) {
+            this.animTimer = 0;
+            this.animFrame = (this.animFrame + 1) % 4;
         }
         
-        if (this.state === 'attacking' && this.stateTimer <= 0) {
-            this.state = 'idle';
+        // Máquina de estados
+        switch (this.state) {
+            case 'idle':
+                this.updateIdle(deltaTime, player);
+                break;
+            case 'patrol':
+                this.updatePatrol(deltaTime, player, tileMap);
+                break;
+            case 'chase':
+                this.updateChase(deltaTime, player, tileMap);
+                break;
+            case 'attack':
+                this.updateAttack(deltaTime, player);
+                break;
+            case 'hurt':
+                this.updateHurt(deltaTime);
+                break;
+            case 'return':
+                this.updateReturn(deltaTime, tileMap);
+                break;
         }
         
         return null;
+    }
+    
+    // ============================================
+    // ESTADOS DA IA
+    // ============================================
+    
+    updateIdle(deltaTime, player) {
+        // Verifica se detecta o jogador
+        if (this.canDetectPlayer(player)) {
+            this.changeState('chase');
+            return;
+        }
+        
+        // Após um tempo, começa a patrulhar
+        if (this.stateTimer <= 0) {
+            if (this.patrolPoints.length > 0) {
+                this.changeState('patrol');
+            } else {
+                this.stateTimer = 2 + Math.random() * 2;
+            }
+        }
+    }
+    
+    updatePatrol(deltaTime, player, tileMap) {
+        // Verifica se detecta o jogador
+        if (this.canDetectPlayer(player)) {
+            this.changeState('chase');
+            return;
+        }
+        
+        if (this.patrolPoints.length === 0) {
+            this.changeState('idle');
+            this.stateTimer = 2;
+            return;
+        }
+        
+        const target = this.patrolPoints[this.currentPatrolIndex];
+        const dx = target.x - this.x;
+        const dy = target.y - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < 5) {
+            // Chegou no ponto, espera um pouco
+            this.patrolWaitTime -= deltaTime;
+            if (this.patrolWaitTime <= 0) {
+                this.currentPatrolIndex = (this.currentPatrolIndex + 1) % this.patrolPoints.length;
+                this.patrolWaitTime = 1;
+            }
+        } else {
+            // Move em direção ao ponto
+            this.moveTowards(target.x, target.y, this.patrolSpeed, deltaTime, tileMap);
+        }
+    }
+    
+    updateChase(deltaTime, player, tileMap) {
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Perdeu o jogador (muito longe)
+        if (distance > this.detectionRange * 1.5) {
+            this.changeState('return');
+            return;
+        }
+        
+        // Dentro do range de ataque
+        if (distance < this.attackRange) {
+            if (this.attackCooldown <= 0) {
+                this.changeState('attack');
+            }
+            return;
+        }
+        
+        // Persegue o jogador
+        this.moveTowards(player.x, player.y, this.chaseSpeed, deltaTime, tileMap);
+    }
+    
+    updateAttack(deltaTime, player) {
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Se o jogador saiu do range, volta a perseguir
+        if (distance > this.attackRange * 1.5) {
+            this.changeState('chase');
+            return;
+        }
+        
+        // Executa o ataque (uma vez)
+        if (this.stateTimer <= 0) {
+            this.performAttack(player);
+            this.attackCooldown = this.attackCooldownMax;
+            this.changeState('chase');
+        }
+    }
+    
+    updateHurt(deltaTime) {
+        if (this.stateTimer <= 0) {
+            this.changeState('chase');
+        }
+    }
+    
+    updateReturn(deltaTime, tileMap) {
+        const dx = this.originalX - this.x;
+        const dy = this.originalY - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < 10) {
+            this.changeState('idle');
+            this.stateTimer = 2;
+            return;
+        }
+        
+        this.moveTowards(this.originalX, this.originalY, this.patrolSpeed, deltaTime, tileMap);
+    }
+    
+    // ============================================
+    // AÇÕES
+    // ============================================
+    
+    canDetectPlayer(player) {
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        return distance < this.detectionRange;
+    }
+    
+    moveTowards(targetX, targetY, speed, deltaTime, tileMap) {
+        const dx = targetX - this.x;
+        const dy = targetY - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < 1) return;
+        
+        const nx = dx / distance;
+        const ny = dy / distance;
+        
+        // Atualiza direção visual
+        if (Math.abs(dx) > Math.abs(dy)) {
+            this.direction = dx > 0 ? 'right' : 'left';
+        } else {
+            this.direction = dy > 0 ? 'down' : 'up';
+        }
+        
+        const newX = this.x + nx * speed * deltaTime;
+        const newY = this.y + ny * speed * deltaTime;
+        
+        // Colisão simples
+        if (!tileMap.isSolid(newX, this.y) && !tileMap.isSolid(newX + this.width, this.y)) {
+            this.x = newX;
+        }
+        if (!tileMap.isSolid(this.x, newY) && !tileMap.isSolid(this.x, newY + this.height)) {
+            this.y = newY;
+        }
+    }
+    
+    performAttack(player) {
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.attackRange + 20) {
+            const actualDamage = Math.max(1, this.damage);
+            player.takeDamage(actualDamage);
+            console.log(`💥 ${this.name} atacou Mairon! Dano: ${actualDamage}`);
+        }
+    }
+    
+    changeState(newState) {
+        this.state = newState;
+        this.stateTimer = newState === 'attack' ? 0.4 : 0;
     }
     
     takeDamage(amount) {
@@ -58,8 +267,6 @@ class Enemy extends Entity {
         const actualDamage = Math.max(1, amount - this.defense);
         this.hp -= actualDamage;
         this.hitFlash = 1;
-        this.state = 'hurt';
-        this.stateTimer = 0.2;
         
         console.log(`🩸 ${this.name} recebeu ${actualDamage} de dano (HP: ${this.hp}/${this.maxHP})`);
         
@@ -67,6 +274,10 @@ class Enemy extends Entity {
             this.die();
             return { died: true, damage: actualDamage, xp: this.xpReward };
         }
+        
+        // Entra em estado hurt brevemente
+        this.changeState('hurt');
+        this.stateTimer = 0.2;
         
         return { died: false, damage: actualDamage };
     }
@@ -85,8 +296,13 @@ class Enemy extends Entity {
         this.x = this.originalX;
         this.y = this.originalY;
         this.state = 'idle';
+        this.stateTimer = 1;
         console.log(`🔄 ${this.name} respawnou`);
     }
+    
+    // ============================================
+    // RENDERIZAÇÃO
+    // ============================================
     
     render(ctx, camera) {
         if (!this.alive) return;
@@ -101,45 +317,60 @@ class Enemy extends Entity {
         ctx.fill();
         
         // Corpo (com flash de dano)
-        if (this.hitFlash > 0) {
-            ctx.fillStyle = '#ffffff';
-        } else {
-            ctx.fillStyle = this.color;
-        }
+        const bodyColor = this.hitFlash > 0 ? '#ffffff' : this.color;
+        ctx.fillStyle = bodyColor;
         ctx.fillRect(screenX, screenY, this.width, this.height);
         
-        // Detalhes do dummy (poste de treino)
-        ctx.fillStyle = '#5a3a1a';
-        ctx.fillRect(screenX + this.width/2 - 2, screenY + this.height - 10, 4, 10);
+        // Detalhes visuais específicos do tipo
+        this.renderDetails(ctx, screenX, screenY);
         
-        // "Cabeça" do dummy
-        ctx.fillStyle = this.hitFlash > 0 ? '#ffffff' : '#cc6633';
-        ctx.fillRect(screenX + 4, screenY + 4, this.width - 8, 12);
+        // Indicador de estado (debug visual sutil)
+        this.renderStateIndicator(ctx, screenX, screenY);
         
         // Barra de HP
+        this.renderHPBar(ctx, screenX, screenY);
+    }
+    
+    renderDetails(ctx, x, y) {
+        // Sobrescrito pelas subclasses
+    }
+    
+    renderStateIndicator(ctx, x, y) {
+        // Pequeno indicador colorido acima do inimigo (opcional, para debug)
+        const colors = {
+            'idle': '#888888',
+            'patrol': '#4a90e2',
+            'chase': '#ff6b35',
+            'attack': '#ff0000',
+            'hurt': '#ffff00',
+            'return': '#aaaaaa'
+        };
+        
+        ctx.fillStyle = colors[this.state] || '#ffffff';
+        ctx.fillRect(x + this.width/2 - 2, y - 18, 4, 4);
+    }
+    
+    renderHPBar(ctx, x, y) {
         const barWidth = this.width + 10;
         const barHeight = 4;
-        const barX = screenX - 5;
-        const barY = screenY - 10;
+        const barX = x - 5;
+        const barY = y - 12;
         
-        // Fundo da barra
         ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.fillRect(barX, barY, barWidth, barHeight);
         
-        // HP atual
         const hpPercent = this.hp / this.maxHP;
         ctx.fillStyle = hpPercent > 0.5 ? '#4ade80' : hpPercent > 0.25 ? '#fbbf24' : '#ef4444';
         ctx.fillRect(barX, barY, barWidth * hpPercent, barHeight);
         
-        // Borda da barra
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 1;
         ctx.strokeRect(barX, barY, barWidth, barHeight);
         
-        // Nome acima da barra
+        // Nome acima
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 10px Arial';
+        ctx.font = 'bold 9px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(this.name, screenX + this.width/2, barY - 3);
+        ctx.fillText(this.name, x + this.width/2, barY - 2);
     }
 }
