@@ -2,6 +2,8 @@ class InputManager {
     constructor() {
         this.keys = {};
         this.setupListeners();
+
+        this.tabKeyReleased = true; // Para evitar múltiplos toggles do minimapa
     }
     
     setupListeners() {
@@ -38,6 +40,16 @@ class InputManager {
             dy /= length;
         }
         
+                if (window.game && window.game.minimap) {
+            const tabPressed = this.isKeyDown('tab');
+            if (tabPressed && !this.tabKeyReleased) {
+                window.game.minimap.toggle();
+                this.tabKeyReleased = false;
+            } else if (!tabPressed) {
+                this.tabKeyReleased = true;
+            }
+        }
         return { dx, dy };
+
     }
 }

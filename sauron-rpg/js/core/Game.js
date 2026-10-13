@@ -49,6 +49,9 @@ class Game {
         this.transitionAlpha = 0;
 
         this.corruptedShadows = []; // ✅ NOVO: lista de sombras
+
+        this.minimap = new MinimapSystem(this); // ✅ NOVO
+
     }
     
     // ✅ NOVO: Inicialização para o menu principal
@@ -108,7 +111,6 @@ class Game {
             // No método init(), após criar Aulë
     this.celebrimborQuestStarted = false;
     
-    // No método update(), adicione verificação de missão do Celebrimbor
     if (this.questGivenByCelebrimbor && !this.celebrimborQuestStarted) {
         this.celebrimborQuestStarted = true;
         
@@ -190,6 +192,8 @@ class Game {
             this.player.y = spawnY;
         }
         
+        this.minimap.initFogOfWar();
+
         console.log(`✅ Mapa carregado: ${this.getMapName()}`);
     }
     
@@ -588,6 +592,8 @@ class Game {
         this.saveManager.update(deltaTime);
 
         this.updateCamera();
+
+        this.minimap.update(deltaTime);
     }
     
     // ✅ NOVO: Verifica se o jogador está em um portal
@@ -754,6 +760,8 @@ class Game {
             this.ctx.fillStyle = `rgba(0, 0, 0, ${this.transitionAlpha})`;
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         }
+
+        this.minimap.render(this.ctx);
     }
     
     // ✅ NOVO: Mostra nome do mapa no topo
