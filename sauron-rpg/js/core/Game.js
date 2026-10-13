@@ -51,7 +51,36 @@ class Game {
         this.corruptedShadows = []; // ✅ NOVO: lista de sombras
     }
     
-        init() {
+    // ✅ NOVO: Inicialização para o menu principal
+    initMainMenu() {
+        console.log('🎮 Sauron RPG - Inicializando menu...');
+        
+        // Cria os sistemas básicos SEM iniciar o loop
+        this.tileMap = new TileMap(32);
+        
+        const startX = 3 * 32;
+        const startY = 20 * 32;
+        this.player = new Player(startX, startY);
+        this.player.setEquipmentSystem(this.equipment);
+        
+        // Configura entidades iniciais (mas não inicia o loop)
+        this.setupWorkshopEntities();
+        
+        // Listeners de save
+        window.addEventListener('beforeunload', () => {
+            this.saveManager.save(this, true);
+        });
+        
+        window.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                this.saveManager.save(this, true);
+            }
+        });
+        
+        console.log('✅ Menu pronto');
+    }
+
+        startGameLoop() {
         console.log('🎮 Sauron RPG - Inicializando...');
         
         // 1. Cria o jogador PRIMEIRO

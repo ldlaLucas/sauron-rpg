@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sauron RPG - MVP</title>
+    <title>Sauron RPG - Da Luz à Dominação</title>
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="css/main.css">
 </head>
@@ -12,24 +12,71 @@
         <canvas id="gameCanvas"></canvas>
         <div id="ui-layer"></div>
         
-        <!-- ✅ NOVO: Botão para ativar áudio -->
+        <!-- ✅ NOVO: Menu Principal -->
+        <div id="main-menu-ui">
+            <div class="menu-content">
+                <div class="menu-title">SAURON</div>
+                <div class="menu-subtitle">Da Luz à Dominação</div>
+                
+                <div class="menu-buttons">
+                    <button id="menu-new-game" class="menu-btn">🆕 NOVO JOGO</button>
+                    <button id="menu-continue" class="menu-btn">📂 CONTINUAR</button>
+                    <button id="menu-options" class="menu-btn">⚙ OPÇÕES</button>
+                    <button id="menu-quit" class="menu-btn">🚪 SAIR</button>
+                </div>
+            </div>
+            
+            <!-- Painel de Opções -->
+            <div id="menu-options-panel">
+                <div class="options-header">
+                    <div class="options-title">⚙ OPÇÕES</div>
+                    <button id="menu-options-close" class="options-close">FECHAR</button>
+                </div>
+                
+                <div class="option-row">
+                    <label>🔊 Volume Geral</label>
+                    <input type="range" id="master-volume" min="0" max="100" value="70">
+                    <span class="option-value" id="master-value">70</span>
+                </div>
+                
+                <div class="option-row">
+                    <label>🎵 Música</label>
+                    <input type="range" id="music-volume" min="0" max="100" value="40">
+                    <span class="option-value" id="music-value">40</span>
+                </div>
+                
+                <div class="option-row">
+                    <label>🔔 Efeitos</label>
+                    <input type="range" id="sfx-volume" min="0" max="100" value="70">
+                    <span class="option-value" id="sfx-value">70</span>
+                </div>
+            </div>
+            
+            <div class="menu-footer">
+                Capítulo I — O Discípulo de Aulë
+            </div>
+        </div>
+        
+        <!-- Botão de Áudio -->
         <button id="audio-toggle" style="
             position: absolute;
-            bottom: 2px;
-            right: 2px;
+            bottom: 20px;
+            right: 20px;
             background: rgba(0, 0, 0, 0.8);
             color: #ffd700;
             border: 2px solid #ffd700;
-            padding: 6px 10px;
-            border-radius: 3px;
-            font-size: 8px;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 16px;
             font-weight: bold;
             cursor: pointer;
             z-index: 1000;
             font-family: Arial, sans-serif;
             box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+            display: none;
         ">🔊 Ativar Áudio</button>
         
+        <!-- UI da Forja -->
         <div id="forge-ui">
             <div class="forge-container">
                 <div class="forge-header">
@@ -40,6 +87,7 @@
             </div>
         </div>
         
+        <!-- UI do Inventário -->
         <div id="inventory-ui">
             <div class="inventory-container">
                 <div class="inventory-header">
@@ -50,6 +98,7 @@
             </div>
         </div>
         
+        <!-- UI de Save/Load -->
         <div id="save-load-ui">
             <div class="save-load-container">
                 <div class="save-load-header">
@@ -65,17 +114,19 @@
         </div>
     </div>
     
+    <!-- Entidades -->
     <script src="js/entities/Entity.js"></script>
     <script src="js/entities/Pickup.js"></script>
-    <script src="js/entities/CrystalPickup.js"></script> <!-- ✅ NOVO -->
+    <script src="js/entities/CrystalPickup.js"></script>
     <script src="js/entities/NPC.js"></script>
-    <script src="js/entities/Celebrimbor.js"></script> <!-- ✅ NOVO -->
+    <script src="js/entities/Celebrimbor.js"></script>
     <script src="js/entities/ForgeObject.js"></script>
     <script src="js/entities/Enemy.js"></script>
     <script src="js/entities/TrainingDummy.js"></script>
-    <script src="js/entities/CorruptedShadow.js"></script> <!-- ✅ NOVO -->
+    <script src="js/entities/CorruptedShadow.js"></script>
     <script src="js/entities/Player.js"></script>
     
+    <!-- Sistemas -->
     <script src="js/systems/DialogueSystem.js"></script>
     <script src="js/systems/InventorySystem.js"></script>
     <script src="js/systems/QuestSystem.js"></script>
@@ -83,18 +134,22 @@
     <script src="js/systems/EquipmentSystem.js"></script>
     <script src="js/systems/DamageNumberSystem.js"></script>
     
+    <!-- Core -->
     <script src="js/core/SaveManager.js"></script>
     <script src="js/core/AudioManager.js"></script>
     <script src="js/core/GameLoop.js"></script>
     <script src="js/core/InputManager.js"></script>
     
+    <!-- UI -->
+    <script src="js/ui/MainMenuUI.js"></script>
     <script src="js/ui/ForgeUI.js"></script>
     <script src="js/ui/InventoryUI.js"></script>
     <script src="js/ui/SaveLoadUI.js"></script>
     
+    <!-- Mundo -->
     <script src="js/world/TileMap.js"></script>
     
-    
+    <!-- Game -->
     <script src="js/core/Game.js"></script>
     <script src="js/main.js"></script>
 </body>
