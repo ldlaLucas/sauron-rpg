@@ -52,6 +52,16 @@ class Game {
 
         this.minimap = new MinimapSystem(this); // ✅ NOVO
 
+        this.skillTree = new SkillTreeSystem(this);
+        this.skillTreeUI = new SkillTreeUI(this.skillTree);
+        this.kKeyReleased = true;
+
+        // Dá 1 ponto inicial para o jogador testar
+        this.skillTree.addSkillPoints(1);
+
+        this.corruption = new CorruptionSystem(this);
+        this.debugKeyReleased = true;
+
     }
     
     // ✅ NOVO: Inicialização para o menu principal
@@ -83,7 +93,7 @@ class Game {
         console.log('✅ Menu pronto');
     }
 
-        startGameLoop() {
+        startGameLoop() {//init()
         console.log('🎮 Sauron RPG - Inicializando...');
         
         // 1. Cria o jogador PRIMEIRO
@@ -91,6 +101,8 @@ class Game {
         const startY = 20 * 32;
         this.player = new Player(startX, startY);
         this.player.setEquipmentSystem(this.equipment);
+
+        this.player.setCorruptionSystem(this.corruption);
         
         // 2. Carrega o mapa padrão da Oficina internamente (sem arquivo externo)
         this.tileMap = new TileMap(32); 
@@ -504,9 +516,56 @@ class Game {
             this.iKeyReleased = true;
         }
 
+                // === TECLA K (árvore de habilidades) ===
+        const kPressed = this.input.isKeyDown('k');
+        if (kPressed && this.kKeyReleased && !this.dialogueSystem.active && !this.craftingSystem.active) {
+            this.skillTree.toggle();
+            this.kKeyReleased = false;
+        } else if (!kPressed) {
+            this.kKeyReleased = true;
+        }
+
+                // === DEBUG: Ctrl+1 a Ctrl+5 para testar corrupção ===
+        if (this.input.isKeyDown('1') && (this.input.keys['control'] || this.input.keys['ctrl'])) {
+            if (this.debugKeyReleased) {
+                this.corruption.setCorruption(20);
+                this.debugKeyReleased = false;
+            }
+        } else if (this.input.isKeyDown('2') && (this.input.keys['control'] || this.input.keys['ctrl'])) {
+            if (this.debugKeyReleased) {
+                this.corruption.setCorruption(40);
+                this.debugKeyReleased = false;
+            }
+        } else if (this.input.isKeyDown('3') && (this.input.keys['control'] || this.input.keys['ctrl'])) {
+            if (this.debugKeyReleased) {
+                this.corruption.setCorruption(60);
+                this.debugKeyReleased = false;
+            }
+        } else if (this.input.isKeyDown('4') && (this.input.keys['control'] || this.input.keys['ctrl'])) {
+            if (this.debugKeyReleased) {
+                this.corruption.setCorruption(80);
+                this.debugKeyReleased = false;
+            }
+        } else if (this.input.isKeyDown('5') && (this.input.keys['control'] || this.input.keys['ctrl'])) {
+            if (this.debugKeyReleased) {
+                this.corruption.setCorruption(100);
+                this.debugKeyReleased = false;
+            }
+        } else if (this.input.isKeyDown('0') && (this.input.keys['control'] || this.input.keys['ctrl'])) {
+            if (this.debugKeyReleased) {
+                this.corruption.setCorruption(0);
+                this.debugKeyReleased = false;
+            }
+        } else if (!this.input.isKeyDown('1') && !this.input.isKeyDown('2') && 
+                   !this.input.isKeyDown('3') && !this.input.isKeyDown('4') && 
+                   !this.input.isKeyDown('5') && !this.input.isKeyDown('0')) {
+            this.debugKeyReleased = true;
+        }
+
         // === Pausas de interface ===
         if (this.saveLoadUI.active) return;
         if (this.inventoryUI.active) return;
+        if (this.skillTree.active) return;
 
         if (this.dialogueSystem.active) {
             this.dialogueSystem.update(this.input);
@@ -628,7 +687,21 @@ class Game {
     
         checkAttackHits() {
         const ah = this.player.attackHitbox;
-        const damage = this.player.getAttackDamage();
+        let damage = this.player.getAttackDamage();
+        
+        // ✅ NOVO: Bônus de dano sombreado
+        damage += this.corruption.getShadowDamageBonus();
+        
+        // ✅ Aplica bônus de dano da árvore
+        const bonuses = this.skillTree.getBonuses();
+        damage = Math.floor(damage * (1 + (bonuses.damageBonus || 0)));
+        
+        // ✅ Aplica crítico
+        let isCritical = false;
+        if (bonuses.critChance && Math.random() < bonuses.critChance) {
+            damage = Math.floor(damage * (bonuses.critMultiplier || 2));
+            isCritical = true;
+        }
         
         // Bonecos de treino
         for (const enemy of this.enemies) {
@@ -636,13 +709,29 @@ class Game {
             
             if (this.boxCollision(ah, { x: enemy.x, y: enemy.y, width: enemy.width, height: enemy.height })) {
                 const result = enemy.takeDamage(damage);
+
+                // ✅ NOVO: Drenar vida (habilidade sombria)
+                const lifeSteal = this.corruption.getLifeStealPercent();
+                if (lifeSteal > 0) {
+                    const heal = Math.floor(result.damage * lifeSteal);
+                    this.player.heal(heal);
+                }
+                
+                // ✅ NOVO: Corrupção ao matar
+                if (result.died) {
+                    this.corruption.onEnemyKilled(enemy);
+                    this.gainXP(result.xp);
+                }
+
                 this.audio.playHit();
                 
+                const color = isCritical ? '#ff3333' : '#ffeb3b';
                 this.damageNumbers.add(
                     enemy.x + enemy.width / 2,
                     enemy.y,
                     result.damage,
-                    '#ffeb3b'
+                    color,
+                    isCritical
                 );
                 
                 if (result.died) {
@@ -651,7 +740,7 @@ class Game {
             }
         }
         
-        // ✅ NOVO: Sombras corrompidas
+        // Sombras corrompidas
         for (const shadow of this.corruptedShadows) {
             if (!shadow.alive) continue;
             
@@ -659,16 +748,17 @@ class Game {
                 const result = shadow.takeDamage(damage);
                 this.audio.playHit();
                 
+                const color = isCritical ? '#ff3333' : '#ffeb3b';
                 this.damageNumbers.add(
                     shadow.x + shadow.width / 2,
                     shadow.y,
                     result.damage,
-                    '#ffeb3b'
+                    color,
+                    isCritical
                 );
                 
                 if (result.died) {
                     this.gainXP(result.xp);
-                    this.audio.playCollect(); // Som de vitória
                 }
             }
         }
@@ -683,8 +773,15 @@ class Game {
         );
     }
     
-    gainXP(amount) {
-        this.playerXP += amount;
+        gainXP(amount) {
+        // Aplica bônus de XP da árvore de habilidades
+        const bonuses = this.skillTree.getBonuses();
+        const xpBonus = bonuses.xpBonus || 0;
+        const finalAmount = Math.floor(amount * (1 + xpBonus));
+        
+        this.playerXP += finalAmount;
+        console.log(`✨ +${finalAmount} XP${xpBonus > 0 ? ` (+${Math.round(xpBonus * 100)}% bônus)` : ''} (Total: ${this.playerXP}/${this.xpToNextLevel})`);
+        
         while (this.playerXP >= this.xpToNextLevel) {
             this.levelUp();
         }
@@ -701,6 +798,8 @@ class Game {
         
         this.audio.playLevelUp();
         console.log(`🎉 LEVEL UP! Nível ${this.playerLevel}`);
+                // ✅ NOVO: Ganha 1 ponto de habilidade ao subir de nível
+        this.skillTree.addSkillPoints(1);
     }
     
     updateCamera() {
@@ -753,6 +852,11 @@ class Game {
         
         this.renderMapName();
         this.renderPortalHint();
+
+                // === Indicador de pontos de habilidade ===
+        if (this.skillTree.skillPoints > 0 && !this.skillTree.active) {
+            this.renderSkillPointsNotification();
+        }
         
         this.dialogueSystem.render(this.ctx, this.canvas);
         
@@ -816,11 +920,11 @@ class Game {
         const ctx = this.ctx;
         
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(startX, startY, 220, 55);
+        ctx.fillRect(startX, startY, 220, 70);
         
         ctx.strokeStyle = '#ffd700';
         ctx.lineWidth = 2;
-        ctx.strokeRect(startX, startY, 220, 55);
+        ctx.strokeRect(startX, startY, 220, 70);
         
         ctx.fillStyle = '#ffd700';
         ctx.font = 'bold 12px Arial';
@@ -864,5 +968,48 @@ class Game {
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 8px Arial';
         ctx.fillText(`XP ${this.playerXP}/${this.xpToNextLevel}`, barX + barWidth / 2, xpBarY + 6);
+    
+                // === Barra de Corrupção ===
+        const corruptionBarY = xpBarY + 12;
+        const corruptionBarHeight = 6;
+        
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(barX, corruptionBarY, barWidth, corruptionBarHeight);
+        
+        const corruptionPercent = this.corruption.getCorruptionPercent();
+        
+        // Gradiente de cor baseado na corrupção
+        let corruptionColor;
+        if (corruptionPercent < 0.4) corruptionColor = '#8b4a8b';
+        else if (corruptionPercent < 0.7) corruptionColor = '#5a2a6a';
+        else corruptionColor = '#ff3333';
+        
+        ctx.fillStyle = corruptionColor;
+        ctx.fillRect(barX, corruptionBarY, barWidth * corruptionPercent, corruptionBarHeight);
+        
+        ctx.strokeStyle = '#fff';
+        ctx.strokeRect(barX, corruptionBarY, barWidth, corruptionBarHeight);
+        
+        const tier = this.corruption.getCurrentTier();
+        ctx.fillStyle = tier.color;
+        ctx.font = 'bold 8px Arial';
+        ctx.fillText(`🌑 ${tier.name} (${Math.round(this.corruption.value)}%)`, barX + barWidth / 2, corruptionBarY + 5);
+    
+    }
+        renderSkillPointsNotification() {
+        const ctx = this.ctx;
+        const pulse = Math.sin(Date.now() / 300) * 0.2 + 0.8;
+        
+        ctx.fillStyle = `rgba(255, 215, 0, ${pulse * 0.3})`;
+        ctx.fillRect(this.canvas.width / 2 - 140, 90, 280, 30);
+        
+        ctx.strokeStyle = '#ffd700';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(this.canvas.width / 2 - 140, 90, 280, 30);
+        
+        ctx.fillStyle = '#ffd700';
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`🌟 ${this.skillTree.skillPoints} ponto(s) disponível(is) — Pressione K`, this.canvas.width / 2, 70);
     }
 }

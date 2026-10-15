@@ -144,4 +144,24 @@ class CraftingSystem {
         }
         ctx.globalAlpha = 1;
     }
+
+        enableAdvancedRecipes() {
+        // Adiciona receitas avançadas se ainda não existirem
+        const advancedExists = this.recipes.find(r => r.id === 'masterwork_blade');
+        if (advancedExists) return;
+        
+        this.recipes.push({
+            id: 'masterwork_blade',
+            name: 'Lâmina Obra-Prima',
+            description: 'Forjada com maestria. Brilha com luz dourada.',
+            ingredients: {
+                iron: 5,
+                valinor_crystal: 3
+            },
+            result: 'masterwork_blade',
+            quality: 'Masterwork'
+        });
+        
+        console.log('🔨 Receitas avançadas desbloqueadas!');
+    }
 }

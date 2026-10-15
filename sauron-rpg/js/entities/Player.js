@@ -32,6 +32,10 @@ class Player {
         
         // ✅ NOVA FLAG: controla se o hit já foi processado neste ataque
         this.attackHitProcessed = false;
+
+        this.skillBonuses = {}; // Bônus da árvore de habilidades
+
+        this.corruption = null; // Referência ao CorruptionSystem
     }
     
     setEquipmentSystem(equipment) {
@@ -120,10 +124,15 @@ class Player {
         return damage;
     }
     
-    takeDamage(amount) {
-        this.hp = Math.max(0, this.hp - amount);
+        takeDamage(amount) {
+        // Aplica redução de dano da árvore
+        const bonuses = this.skillBonuses || {};
+        const reduction = bonuses.damageReduction || 0;
+        const actualDamage = Math.max(1, Math.floor(amount * (1 - reduction)));
+        
+        this.hp = Math.max(0, this.hp - actualDamage);
         this.hitFlash = 1;
-        console.log(`💔 Mairon recebeu ${amount} de dano (HP: ${this.hp}/${this.maxHP})`);
+        console.log(`💔 Mairon recebeu ${actualDamage} de dano${reduction > 0 ? ` (-${Math.round(reduction*100)}%)` : ''} (HP: ${this.hp}/${this.maxHP})`);
     }
     
     heal(amount) {
@@ -145,9 +154,30 @@ class Player {
         );
     }
     
-    render(ctx, camera) {
+        render(ctx, camera) {
         const screenX = this.x - camera.x - 4;
         const screenY = this.y - camera.y - 4;
+
+        // ✅ NOVO: Calcula intensidade da corrupção (0 a 1)
+        const corruptionLevel = this.corruption ? this.corruption.getCorruptionPercent() : 0;
+        
+        // ✅ NOVO: Aura sombria ao redor do jogador (se corrupção > 20)
+        if (corruptionLevel > 0.2) {
+            const auraIntensity = (corruptionLevel - 0.2) / 0.8;
+            const pulse = Math.sin(Date.now() / 400) * 0.2 + 0.8;
+            
+            // Aura externa
+            ctx.fillStyle = `rgba(80, 20, 100, ${auraIntensity * 0.3 * pulse})`;
+            ctx.beginPath();
+            ctx.arc(screenX + 16, screenY + 16, 20 + auraIntensity * 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Aura interna
+            ctx.fillStyle = `rgba(120, 30, 140, ${auraIntensity * 0.4 * pulse})`;
+            ctx.beginPath();
+            ctx.arc(screenX + 16, screenY + 16, 14, 0, Math.PI * 2);
+            ctx.fill();
+        }
 
         // Sombra
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
@@ -155,32 +185,62 @@ class Player {
         ctx.ellipse(screenX + 16, screenY + 30, 10, 4, 0, 0, Math.PI * 2);
         ctx.fill();
 
+        // ✅ NOVO: Cores do corpo mudam com corrupção
+        const bodyColor = this.hitFlash > 0 ? '#ff6666' : this.getCorruptedColor(this.color, corruptionLevel);
+        const skinColor = this.hitFlash > 0 ? '#ff6666' : this.getCorruptedColor(this.skinColor, corruptionLevel);
+        const hairColor = this.getCorruptedColor('#e0e0e0', corruptionLevel);
+        const accentColor = corruptionLevel > 0.6 ? '#ff3333' : this.accentColor;
+
         // Corpo
-        ctx.fillStyle = this.hitFlash > 0 ? '#ff6666' : this.color;
+        ctx.fillStyle = bodyColor;
         ctx.fillRect(screenX + 6, screenY + 10, 20, 20);
         
         // Cabeça
-        ctx.fillStyle = this.hitFlash > 0 ? '#ff6666' : this.skinColor;
+        ctx.fillStyle = skinColor;
         ctx.fillRect(screenX + 10, screenY + 2, 12, 10);
         
         // Cabelo
-        ctx.fillStyle = '#e0e0e0';
+        ctx.fillStyle = hairColor;
         ctx.fillRect(screenX + 9, screenY + 1, 14, 5);
 
-        // Detalhes dourados e direção
-        ctx.fillStyle = this.accentColor;
+        // Detalhes (olhos e roupa)
+        ctx.fillStyle = accentColor;
         if (this.direction === 'down') {
+            // ✅ NOVO: Olhos vermelhos se corrupção alta
+            const eyeColor = corruptionLevel > 0.6 ? '#ff3333' : accentColor;
+            ctx.fillStyle = eyeColor;
             ctx.fillRect(screenX + 12, screenY + 6, 2, 2);
             ctx.fillRect(screenX + 18, screenY + 6, 2, 2);
+            ctx.fillStyle = accentColor;
             ctx.fillRect(screenX + 8, screenY + 18, 16, 3);
         } else if (this.direction === 'up') {
             ctx.fillRect(screenX + 8, screenY + 18, 16, 3);
         } else if (this.direction === 'left') {
+            const eyeColor = corruptionLevel > 0.6 ? '#ff3333' : accentColor;
+            ctx.fillStyle = eyeColor;
             ctx.fillRect(screenX + 10, screenY + 6, 2, 2);
+            ctx.fillStyle = accentColor;
             ctx.fillRect(screenX + 8, screenY + 18, 16, 3);
         } else if (this.direction === 'right') {
+            const eyeColor = corruptionLevel > 0.6 ? '#ff3333' : accentColor;
+            ctx.fillStyle = eyeColor;
             ctx.fillRect(screenX + 20, screenY + 6, 2, 2);
+            ctx.fillStyle = accentColor;
             ctx.fillRect(screenX + 8, screenY + 18, 16, 3);
+        }
+        
+        // ✅ NOVO: Olho de Sauron (corrupção 100)
+        if (corruptionLevel >= 1.0 && this.direction !== 'up') {
+            const eyePulse = Math.sin(Date.now() / 200) * 0.3 + 0.7;
+            ctx.fillStyle = `rgba(255, 50, 0, ${eyePulse})`;
+            
+            if (this.direction === 'down') {
+                ctx.fillRect(screenX + 14, screenY + 5, 4, 3);
+            } else if (this.direction === 'left') {
+                ctx.fillRect(screenX + 10, screenY + 5, 4, 3);
+            } else if (this.direction === 'right') {
+                ctx.fillRect(screenX + 18, screenY + 5, 4, 3);
+            }
         }
         
         // Renderiza arma equipada
@@ -192,13 +252,43 @@ class Player {
             const ahScreenX = ah.x - camera.x;
             const ahScreenY = ah.y - camera.y;
             
-            ctx.fillStyle = 'rgba(255, 215, 0, 0.4)';
+            // ✅ NOVO: Cor do ataque muda com corrupção
+            const attackColor = corruptionLevel > 0.6 
+                ? `rgba(180, 30, 180, 0.4)` 
+                : 'rgba(255, 215, 0, 0.4)';
+            const strokeColor = corruptionLevel > 0.6 ? '#aa22aa' : '#ffd700';
+            
+            ctx.fillStyle = attackColor;
             ctx.fillRect(ahScreenX, ahScreenY, ah.width, ah.height);
             
-            ctx.strokeStyle = '#ffd700';
+            ctx.strokeStyle = strokeColor;
             ctx.lineWidth = 2;
             ctx.strokeRect(ahScreenX, ahScreenY, ah.width, ah.height);
         }
+    }
+    
+    // ✅ NOVO: Mistura uma cor com tons sombrios baseado na corrupção
+    getCorruptedColor(baseColor, corruptionLevel) {
+        if (corruptionLevel <= 0) return baseColor;
+        
+        // Converte hex para RGB
+        const hex = baseColor.replace('#', '');
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        
+        // Cor alvo (roxo escuro → vermelho)
+        const targetR = corruptionLevel > 0.6 ? 80 : 100;
+        const targetG = 20;
+        const targetB = corruptionLevel > 0.6 ? 80 : 120;
+        
+        // Interpola
+        const mix = corruptionLevel * 0.7; // máximo 70% de mistura
+        const finalR = Math.round(r * (1 - mix) + targetR * mix);
+        const finalG = Math.round(g * (1 - mix) + targetG * mix);
+        const finalB = Math.round(b * (1 - mix) + targetB * mix);
+        
+        return `rgb(${finalR}, ${finalG}, ${finalB})`;
     }
     
         renderWeapon(ctx, screenX, screenY) {
@@ -270,6 +360,40 @@ class Player {
             // Detalhe dourado
             ctx.fillStyle = '#ffd700';
             ctx.fillRect(wx + 1, wy + 5, 2, 1);
+        } else if (weapon.visual === 'shadow_blade') {
+            // Lâmina sombria (roxo escuro)
+            ctx.fillStyle = '#2a0a2a';
+            ctx.fillRect(wx + 1, wy - 6, 2, 12);
+            
+            // Brilho roxo pulsante
+            const pulse = Math.sin(Date.now() / 300) * 0.3 + 0.7;
+            ctx.fillStyle = `rgba(170, 34, 170, ${pulse})`;
+            ctx.fillRect(wx, wy - 7, 4, 14);
+            
+            // Cabo escuro
+            ctx.fillStyle = '#1a0a1a';
+            ctx.fillRect(wx, wy + 6, 4, 3);
+            
+            // Detalhe vermelho (olho)
+            ctx.fillStyle = '#ff3333';
+            ctx.fillRect(wx + 1, wy + 5, 2, 1);
+        } else if (weapon.visual === 'masterwork') {
+            // Lâmina obra-prima (dourada)
+            ctx.fillStyle = '#ffd700';
+            ctx.fillRect(wx + 1, wy - 6, 2, 12);
+            
+            // Brilho
+            ctx.fillStyle = 'rgba(255, 237, 78, 0.6)';
+            ctx.fillRect(wx, wy - 7, 4, 14);
+            
+            // Cabo
+            ctx.fillStyle = '#8b5a2b';
+            ctx.fillRect(wx, wy + 6, 4, 3);
         }
+
+    }
+
+        setCorruptionSystem(corruption) {
+        this.corruption = corruption;
     }
 }

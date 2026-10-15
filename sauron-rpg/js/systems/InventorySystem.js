@@ -58,7 +58,9 @@ class InventorySystem {
             'apprentice_tool': 'Ferramenta de Aprendiz',
             'iron_sword': 'Espada de Ferro',
             'stone_hammer': 'Martelo de Pedra',
-            'elven_blade': 'Lâmina Élfica' // ✅ NOVO
+            'elven_blade': 'Lâmina Élfica', // ✅ NOVO
+            'masterwork_blade': 'Lâmina Obra-Prima',
+            'shadow_blade': 'Lâmina Sombria'  // ✅ NOVO
         };
         return names[type] || type;
     }
@@ -72,7 +74,9 @@ class InventorySystem {
             'apprentice_tool': '#ffd700',
             'iron_sword': '#d0d0d0',
             'stone_hammer': '#6a6a6a',
-            'elven_blade': '#4a90e2' // ✅ NOVO
+            'elven_blade': '#4a90e2', // ✅ NOVO
+            'masterwork_blade': '#a78bfa', // ✅ NOVO
+            'shadow_blade': '#4b0082'  // ✅ NOVO
         };
         return colors[type] || '#fff';
     }
@@ -86,49 +90,49 @@ class InventorySystem {
         }
     }
     
-    render(ctx, canvas) {
+        render(ctx, canvas) {
         // HUD de inventário no canto superior direito
-        const startX = canvas.width - 180;
+        const startX = canvas.width - 160; // ✅ REDUZIDO (era 180)
         const startY = 20;
         
         // Conta quantos itens temos
         const itemCount = Object.keys(this.items).filter(k => this.items[k] > 0).length;
-        const height = 40 + Math.max(itemCount, 3) * 20;
+        const height = 35 + Math.max(itemCount, 3) * 18; // ✅ REDUZIDO (era 40 + 20)
         
         // Fundo
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(startX, startY, 160, height);
+        ctx.fillRect(startX, startY, 140, height); // ✅ REDUZIDO (era 160)
         
         // Borda
         ctx.strokeStyle = '#ffd700';
         ctx.lineWidth = 2;
-        ctx.strokeRect(startX, startY, 160, height);
+        ctx.strokeRect(startX, startY, 140, height);
         
         // Título
         ctx.fillStyle = '#ffd700';
-        ctx.font = 'bold 14px Arial';
+        ctx.font = 'bold 11px Arial'; // ✅ REDUZIDO (era 14)
         ctx.textAlign = 'left';
-        ctx.fillText('MATERIAIS', startX + 10, startY + 20);
+        ctx.fillText('MATERIAIS', startX + 8, startY + 16);
         
         // Itens
-        ctx.font = '13px Arial';
-        let itemY = startY + 40;
+        ctx.font = '11px Arial'; // ✅ REDUZIDO (era 13)
+        let itemY = startY + 32;
         
         // Materiais base
         const baseMaterials = ['iron', 'wood', 'stone'];
         for (const mat of baseMaterials) {
             const amount = this.items[mat] || 0;
             ctx.fillStyle = '#fff';
-            ctx.fillText(`${this.getItemIcon(mat)} ${this.getItemName(mat)}: ${amount}`, startX + 10, itemY);
-            itemY += 20;
+            ctx.fillText(`${this.getItemIcon(mat)} ${this.getItemName(mat)}: ${amount}`, startX + 8, itemY);
+            itemY += 18; // ✅ REDUZIDO (era 20)
         }
         
-        // Outros itens (equipamentos, etc)
+        // Outros itens
         for (const [type, amount] of Object.entries(this.items)) {
             if (baseMaterials.includes(type) || amount <= 0) continue;
             ctx.fillStyle = this.getItemColor(type);
-            ctx.fillText(`${this.getItemIcon(type)} ${this.getItemName(type)}: ${amount}`, startX + 10, itemY);
-            itemY += 20;
+            ctx.fillText(`${this.getItemIcon(type)} ${this.getItemName(type)}: ${amount}`, startX + 8, itemY);
+            itemY += 18;
         }
         
         // Notificações flutuantes
@@ -154,7 +158,9 @@ class InventorySystem {
             'apprentice_tool': '🔧',
             'iron_sword': '⚔️',
             'stone_hammer': '🔨',
-            'elven_blade': '🗡️' // ✅ NOVO
+            'elven_blade': '🗡️', // ✅ NOVO
+            'masterwork_blade': '🗡️',
+            'shadow_blade': '🌑'  // ✅ NOVO
         };
         return icons[type] || '📦';
     }

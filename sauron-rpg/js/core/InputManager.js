@@ -4,14 +4,24 @@ class InputManager {
         this.setupListeners();
 
         this.tabKeyReleased = true; // Para evitar múltiplos toggles do minimapa
+
+        this.keys = {};
+        this.keys['control'] = false;
     }
     
     setupListeners() {
         window.addEventListener('keydown', (e) => {
+            if (e.key === 'Control') {
+                this.keys['control'] = true;
+            }
+            
             this.keys[e.key.toLowerCase()] = true;
         });
         
         window.addEventListener('keyup', (e) => {
+            if (e.key === 'Control') {
+                this.keys['control'] = false;
+            }
             this.keys[e.key.toLowerCase()] = false;
         });
     }

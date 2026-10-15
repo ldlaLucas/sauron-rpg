@@ -107,8 +107,24 @@ class EquipmentSystem {
                 bonuses: { damage: 18, speed: 3 },
                 description: 'Lâmina refinada com cristal de Valinor.',
                 visual: 'elven_sword'
+            },
+                'masterwork_blade': {
+                name: 'Lâmina Obra-Prima',
+                slot: 'weapon',
+                bonuses: { damage: 25, speed: 2 },
+                description: 'Forjada com maestria divina.',
+                visual: 'masterwork'
+            },
+
+               'shadow_blade': {
+                name: 'Lâmina Sombria',
+                slot: 'weapon',
+                bonuses: { damage: 30, speed: 1 },
+                description: 'Forjada nas sombras. Drena vida dos inimigos.',
+                visual: 'shadow_blade'
             }
         };
+        
         
         return items[itemId] || null;
     }
@@ -129,10 +145,10 @@ class EquipmentSystem {
     
     render(ctx, canvas) {
         const startX = 20;
-        const startY = canvas.height - 70;
+        const startY = canvas.height - 60;
         
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(startX, startY, 220, 55);
+        ctx.fillRect(startX, startY, 220, 45);
         
         ctx.strokeStyle = '#ffd700';
         ctx.lineWidth = 2;

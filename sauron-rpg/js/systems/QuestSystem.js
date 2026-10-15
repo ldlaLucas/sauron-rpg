@@ -77,8 +77,8 @@ class QuestSystem {
         
         const startX = 20;
         const startY = 20;
-        const width = 280;
-        const height = 40 + this.activeQuest.objectives.length * 25;
+        const width = 240;
+        const height = 35 + this.activeQuest.objectives.length * 22;
         
         // Fundo
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -92,13 +92,13 @@ class QuestSystem {
         
         // Título
         ctx.fillStyle = borderColor;
-        ctx.font = 'bold 14px Arial';
+        ctx.font = 'bold 12px Arial';
         ctx.textAlign = 'left';
         const titleText = this.activeQuest.completed ? '✅ ' : '📜 ';
         ctx.fillText(titleText + this.activeQuest.title, startX + 10, startY + 20);
         
         // Objetivos
-        ctx.font = '12px Arial';
+        ctx.font = '11px Arial';
         let objY = startY + 40;
         for (const obj of this.activeQuest.objectives) {
             if (obj.type === 'collect') {
@@ -108,7 +108,7 @@ class QuestSystem {
                 ctx.fillStyle = obj.completed ? '#4ade80' : '#fff';
                 ctx.fillText(`${status} Coletar ${itemName}: ${current}/${obj.amount}`, startX + 15, objY);
             }
-            objY += 25;
+            objY += 22;
         }
     }
 }

@@ -43,7 +43,9 @@ class SaveManager {
                     y: e.originalY || e.y,
                     hp: e.hp,
                     alive: e.alive
-                }))
+                })),
+                skillTree: game.skillTree.getSaveData()
+                                               
             };
             
             localStorage.setItem(this.saveKey, JSON.stringify(saveData));
@@ -60,6 +62,11 @@ class SaveManager {
             console.error('❌ Erro ao salvar:', error);
             return false;
         }
+                    // Restaurar corrupção
+            if (saveData.corruption) {
+                game.corruption.loadSaveData(saveData.corruption);
+            }
+    
     }
     
     // ✅ NOVO: Autosave silencioso (sem logs chatos)
