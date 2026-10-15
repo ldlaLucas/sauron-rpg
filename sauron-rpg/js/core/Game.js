@@ -62,6 +62,9 @@ class Game {
         this.corruption = new CorruptionSystem(this);
         this.debugKeyReleased = true;
 
+        this.particles = new ParticleSystem();
+        this.footstepParticleTimer = 0;
+
     }
     
     // ✅ NOVO: Inicialização para o menu principal
@@ -617,6 +620,14 @@ class Game {
             if (result && result.type === 'collected') {
                 this.inventory.add(result.item);
                 this.audio.playCollect();
+                
+                // ✅ Partículas de coleta
+                const color = this.inventory.getItemColor(result.item);
+                this.particles.emitCollect(
+                    pickup.x + pickup.width / 2,
+                    pickup.y + pickup.height / 2,
+                    color
+                );
             }
         }
 
@@ -648,6 +659,33 @@ class Game {
         this.questSystem.update();
         this.craftingSystem.update(deltaTime);
         this.damageNumbers.update(deltaTime);
+                // === Partículas ===
+        this.particles.update(deltaTime);
+        
+        // ✅ NOVO: Rastro do jogador ao andar
+        if (isMoving && !this.player.attacking) {
+            this.footstepParticleTimer -= deltaTime;
+            if (this.footstepParticleTimer <= 0) {
+                this.particles.emitFootstep(
+                    this.player.x + this.player.width / 2,
+                    this.player.y + this.player.height / 2,
+                    this.player.direction
+                );
+                this.footstepParticleTimer = 0.15;
+            }
+        } else {
+            this.footstepParticleTimer = 0;
+        }
+        
+        // ✅ NOVO: Aura de corrupção (emite partículas ao redor do jogador)
+        const corruptionIntensity = this.corruption.getCorruptionPercent();
+        if (corruptionIntensity > 0.2) {
+            this.particles.emitCorruptionAura(
+                this.player.x + this.player.width / 2,
+                this.player.y + this.player.height / 2,
+                corruptionIntensity
+            );
+        }
         this.saveManager.update(deltaTime);
 
         this.updateCamera();
@@ -724,6 +762,13 @@ class Game {
                 }
 
                 this.audio.playHit();
+
+                                // ✅ Partículas de impacto
+                this.particles.emitImpact(
+                    enemy.x + enemy.width / 2,
+                    enemy.y + enemy.height / 2,
+                    isCritical
+                );
                 
                 const color = isCritical ? '#ff3333' : '#ffeb3b';
                 this.damageNumbers.add(
@@ -735,6 +780,16 @@ class Game {
                 );
                 
                 if (result.died) {
+                    if (result.died) {
+                    // ✅ Partículas de explosão
+                    this.particles.emitExplosion(
+                        enemy.x + enemy.width / 2,
+                        enemy.y + enemy.height / 2,
+                        enemy instanceof CorruptedShadow ? '#aa22aa' : '#ff6600'
+                    );
+                    this.corruption.onEnemyKilled(enemy);
+                    this.gainXP(result.xp);
+                }
                     this.gainXP(result.xp);
                 }
             }
@@ -797,6 +852,11 @@ class Game {
         this.player.baseDamage += 2;
         
         this.audio.playLevelUp();
+                // ✅ Partículas de level up
+        this.particles.emitLevelUp(
+            this.player.x + this.player.width / 2,
+            this.player.y
+        );
         console.log(`🎉 LEVEL UP! Nível ${this.playerLevel}`);
                 // ✅ NOVO: Ganha 1 ponto de habilidade ao subir de nível
         this.skillTree.addSkillPoints(1);
@@ -843,6 +903,9 @@ class Game {
         this.player.render(this.ctx, this.camera);
         
         this.damageNumbers.render(this.ctx, this.camera);
+
+                // === Partículas ===
+        this.particles.render(this.ctx, this.camera);
         
         this.inventory.render(this.ctx, this.canvas);
         this.questSystem.render(this.ctx, this.canvas);

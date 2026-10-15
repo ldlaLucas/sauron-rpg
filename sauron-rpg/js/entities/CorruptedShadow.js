@@ -23,6 +23,23 @@ class CorruptedShadow extends Enemy {
     
     update(deltaTime, player, tileMap) {
         this.pulseTimer += deltaTime;
+        if (this.respawnEffect > 0) {
+            this.respawnEffect -= deltaTime;
+        }
+        
+        // ✅ NOVO: Rastro de fumaça ao perseguir
+        if ((this.state === 'chase' || this.state === 'attack') && 
+            window.game && window.game.particles) {
+            if (!this.smokeTimer) this.smokeTimer = 0;
+            this.smokeTimer -= deltaTime;
+            if (this.smokeTimer <= 0) {
+                window.game.particles.emitShadowSmoke(
+                    this.x + this.width / 2,
+                    this.y + this.height / 2
+                );
+                this.smokeTimer = 0.1;
+            }
+        }
         return super.update(deltaTime, player, tileMap);
     }
     

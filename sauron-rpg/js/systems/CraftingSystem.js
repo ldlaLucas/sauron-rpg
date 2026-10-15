@@ -72,6 +72,15 @@ class CraftingSystem {
             }
         }
         this.inventory.add(recipe.result);
+
+                // ✅ NOVO: Faíscas intensas ao forjar
+        if (window.game && window.game.particles && window.game.forge) {
+            window.game.particles.emitForgeSparks(
+                window.game.forge.x + window.game.forge.width / 2,
+                window.game.forge.y + 20,
+                30
+            );
+        }
         
         // ✅ NOVO: Som de forja
         if (window.game && window.game.audio) {

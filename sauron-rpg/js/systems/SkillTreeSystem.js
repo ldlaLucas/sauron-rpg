@@ -160,6 +160,15 @@ class SkillTreeSystem {
         this.unlockedSkills[skillId] = true;
         
         console.log(`✅ Habilidade desbloqueada: ${skill.name}`);
+
+                // ✅ NOVO: Partículas ao desbloquear
+        if (this.game.particles && this.game.player) {
+            this.game.particles.emitSkillUnlock(
+                this.game.player.x + this.game.player.width / 2,
+                this.game.player.y,
+                '#ffd700'
+            );
+        }
         
         // Aplica efeitos imediatos
         this.applySkillEffects();

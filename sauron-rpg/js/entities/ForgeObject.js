@@ -14,7 +14,20 @@ class ForgeObject extends Entity {
         const distance = Math.sqrt(dx * dx + dy * dy);
         
         this.canInteract = distance < this.interactionRadius;
-        
+
+                // ✅ NOVO: Emite faíscas periodicamente quando há jogador perto
+        if (this.canInteract && window.game && window.game.particles) {
+            if (!this.sparkTimer) this.sparkTimer = 0;
+            this.sparkTimer -= 0.016;
+            if (this.sparkTimer <= 0) {
+                window.game.particles.emitForgeSparks(
+                    this.x + this.width / 2,
+                    this.y + this.height / 2
+                );
+                this.sparkTimer = 0.5; // Emite faíscas a cada 0.5 segundos
+            }
+        }
+
         if (this.canInteract && input.isKeyDown('e')) {
             return { type: 'open_forge', forge: this };
         }

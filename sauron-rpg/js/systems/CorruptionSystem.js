@@ -128,6 +128,16 @@ class CorruptionSystem {
                 }
             }
         }
+
+                // ✅ NOVO: Partículas ao mudar de tier
+        if (this.game.particles && this.game.player) {
+            this.game.particles.emitExplosion(
+                this.game.player.x + this.game.player.width / 2,
+                this.game.player.y + this.game.player.height / 2,
+                newTier.color,
+                30
+            );
+        }
     }
     
     checkDarkSkills() {

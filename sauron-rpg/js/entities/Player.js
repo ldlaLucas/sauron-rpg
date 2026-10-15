@@ -132,11 +132,28 @@ class Player {
         
         this.hp = Math.max(0, this.hp - actualDamage);
         this.hitFlash = 1;
-        console.log(`💔 Mairon recebeu ${actualDamage} de dano${reduction > 0 ? ` (-${Math.round(reduction*100)}%)` : ''} (HP: ${this.hp}/${this.maxHP})`);
+         // ✅ NOVO: Partículas de dano
+        if (window.game && window.game.particles) {
+            window.game.particles.emitDamage(
+                this.x + this.width / 2,
+                this.y + this.height / 2
+            );
+        }
+        
+        console.log(`💔 Mairon recebeu ${actualDamage} de dano (HP: ${this.hp}/${this.maxHP})`);
     }
     
-    heal(amount) {
+        heal(amount) {
+        const oldHP = this.hp;
         this.hp = Math.min(this.maxHP, this.hp + amount);
+        
+        // ✅ NOVO: Partículas de cura (só se realmente curou)
+        if (this.hp > oldHP && window.game && window.game.particles) {
+            window.game.particles.emitHeal(
+                this.x + this.width / 2,
+                this.y + this.height / 2
+            );
+        }
     }
     
     checkCollision(x, y, tileMap) {
