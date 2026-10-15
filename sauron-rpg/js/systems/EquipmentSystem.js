@@ -78,53 +78,82 @@ class EquipmentSystem {
         }
     }
     
-        getItemData(itemId) {
+       getItemData(itemId) {
         const items = {
             'apprentice_tool': {
                 name: 'Ferramenta de Aprendiz',
                 slot: 'weapon',
                 bonuses: { damage: 5, speed: 2 },
                 description: 'Sua primeira criação. Simples, mas funcional.',
-                visual: 'tool'
+                visual: 'tool',
+                damageType: 'physical' // ✅ NOVO
             },
             'iron_sword': {
                 name: 'Espada de Ferro',
                 slot: 'weapon',
                 bonuses: { damage: 12, speed: 0 },
                 description: 'Uma lâmina básica forjada com precisão.',
-                visual: 'sword'
+                visual: 'sword',
+                damageType: 'physical' // ✅ NOVO
             },
             'stone_hammer': {
                 name: 'Martelo de Pedra',
                 slot: 'weapon',
                 bonuses: { damage: 15, speed: -2 },
                 description: 'Pesado, mas eficaz.',
-                visual: 'hammer'
+                visual: 'hammer',
+                damageType: 'physical' // ✅ NOVO
             },
-            'elven_blade': { // ✅ NOVO
+            'elven_blade': {
                 name: 'Lâmina Élfica',
                 slot: 'weapon',
                 bonuses: { damage: 18, speed: 3 },
                 description: 'Lâmina refinada com cristal de Valinor.',
-                visual: 'elven_sword'
+                visual: 'elven_sword',
+                damageType: 'light' // ✅ NOVO: Luz
             },
-                'masterwork_blade': {
+            'masterwork_blade': {
                 name: 'Lâmina Obra-Prima',
                 slot: 'weapon',
                 bonuses: { damage: 25, speed: 2 },
                 description: 'Forjada com maestria divina.',
-                visual: 'masterwork'
+                visual: 'masterwork',
+                damageType: 'light' // ✅ NOVO: Luz
             },
-
-               'shadow_blade': {
+            'shadow_blade': {
                 name: 'Lâmina Sombria',
                 slot: 'weapon',
                 bonuses: { damage: 30, speed: 1 },
                 description: 'Forjada nas sombras. Drena vida dos inimigos.',
-                visual: 'shadow_blade'
+                visual: 'shadow_blade',
+                damageType: 'shadow' // ✅ NOVO: Sombra
+            },
+            // ✅ NOVAS ARMAS ELEMENTAIS
+            'flame_sword': {
+                name: 'Espada Flamejante',
+                slot: 'weapon',
+                bonuses: { damage: 20, speed: 1 },
+                description: 'Lâmina em chamas. Queima os inimigos.',
+                visual: 'flame_sword',
+                damageType: 'fire' // ✅ Fogo
+            },
+            'frost_staff': {
+                name: 'Cajado de Gelo',
+                slot: 'weapon',
+                bonuses: { damage: 16, speed: 2 },
+                description: 'Congela os inimigos ao atingi-los.',
+                visual: 'frost_staff',
+                damageType: 'ice' // ✅ Gelo
+            },
+            'thunder_blade': {
+                name: 'Lâmina do Trovão',
+                slot: 'weapon',
+                bonuses: { damage: 22, speed: 0 },
+                description: 'Descarga elétrica a cada golpe.',
+                visual: 'thunder_blade',
+                damageType: 'lightning' // ✅ Elétrico
             }
         };
-        
         
         return items[itemId] || null;
     }

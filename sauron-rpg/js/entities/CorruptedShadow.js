@@ -12,13 +12,23 @@ class CorruptedShadow extends Enemy {
             attackRange: 35,
             detectionRange: 140,
             attackCooldown: 1.8,
-            respawnTime: 120,
+            respawnTime: 30,
             homeRadius: 180,
             color: '#2a1a3a',
-            patrolPoints: patrolPoints
+            patrolPoints: patrolPoints,
+            // ✅ NOVO: Resistências temáticas
+            resistances: {
+                'physical': 0,
+                'fire': 0,
+                'ice': 0,
+                'lightning': 0,
+                'shadow': -0.5, // Resistente a Sombra (-50% dano)
+                'light': 0.5    // Fraco a Luz (+50% dano)
+            }
         });
         
         this.pulseTimer = 0;
+        this.respawnEffect = 0;
     }
     
     update(deltaTime, player, tileMap) {

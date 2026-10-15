@@ -60,7 +60,10 @@ class InventorySystem {
             'stone_hammer': 'Martelo de Pedra',
             'elven_blade': 'Lâmina Élfica', // ✅ NOVO
             'masterwork_blade': 'Lâmina Obra-Prima',
-            'shadow_blade': 'Lâmina Sombria'  // ✅ NOVO
+            'shadow_blade': 'Lâmina Sombria',  // ✅ NOVO
+            'flame_sword': 'Espada Flamejante',
+            'frost_staff': 'Cajado de Gelo',
+            'thunder_blade': 'Lâmina do Trovão'
         };
         return names[type] || type;
     }
@@ -76,7 +79,11 @@ class InventorySystem {
             'stone_hammer': '#6a6a6a',
             'elven_blade': '#4a90e2', // ✅ NOVO
             'masterwork_blade': '#a78bfa', // ✅ NOVO
-            'shadow_blade': '#4b0082'  // ✅ NOVO
+            'shadow_blade': '#4b0082',  // ✅ NOVO
+            'flame_sword': '#ff6600',
+            'frost_staff': '#66ccff',
+            'thunder_blade': '#ffff00'
+
         };
         return colors[type] || '#fff';
     }
@@ -160,7 +167,11 @@ class InventorySystem {
             'stone_hammer': '🔨',
             'elven_blade': '🗡️', // ✅ NOVO
             'masterwork_blade': '🗡️',
-            'shadow_blade': '🌑'  // ✅ NOVO
+            'shadow_blade': '🌑',  // ✅ NOVO
+                        // ... existentes ...
+            'flame_sword': '🔥',
+            'frost_staff': '❄️',
+            'thunder_blade': '⚡'
         };
         return icons[type] || '📦';
     }

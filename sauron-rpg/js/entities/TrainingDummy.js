@@ -1,7 +1,24 @@
 class TrainingDummy extends Enemy {
-    constructor(x, y) {
+    constructor(x, y, damageTypeWeakness = null) {
+        // ✅ NOVO: Resistências baseadas no tipo de fraqueza
+        const resistances = {
+            'physical': 0,
+            'fire': 0,
+            'ice': 0,
+            'lightning': 0,
+            'shadow': 0,
+            'light': 0
+        };
+        
+        // Se tem fraqueza, toma +50% daquele tipo
+        if (damageTypeWeakness) {
+            resistances[damageTypeWeakness] = -0.5;
+        }
+        
         super(x, y, 32, 40, {
-            name: 'Boneco de Treino',
+            name: damageTypeWeakness ? 
+                `Boneco (Fraco a ${DAMAGE_TYPE_NAMES[damageTypeWeakness]})` : 
+                'Boneco de Treino',
             hp: 50,
             damage: 0,
             defense: 0,
@@ -10,11 +27,14 @@ class TrainingDummy extends Enemy {
             patrolSpeed: 0,
             chaseSpeed: 0,
             attackRange: 0,
-            detectionRange: 0,  // ✅ Não detecta o jogador
+            detectionRange: 0,
             attackCooldown: 0,
             respawnTime: 4,
-            color: '#8b5a2b'
+            color: '#8b5a2b',
+            resistances: resistances // ✅ NOVO
         });
+        
+        this.weakness = damageTypeWeakness;
     }
     
     // ✅ Sobrescreve o update para NÃO executar IA

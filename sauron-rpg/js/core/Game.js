@@ -65,6 +65,8 @@ class Game {
         this.particles = new ParticleSystem();
         this.footstepParticleTimer = 0;
 
+        this.damageTypeSystem = new DamageTypeSystem();
+
     }
     
     // ✅ NOVO: Inicialização para o menu principal
@@ -245,6 +247,19 @@ class Game {
         for (const pos of dummyPositions) {
             if (!this.tileMap.isSolid(pos.x + 16, pos.y + 20)) {
                 this.enemies.push(new TrainingDummy(pos.x, pos.y));
+            }
+        }
+
+                // ✅ NOVO: Bonecos de treino com fraquezas variadas
+        const dummyConfigs = [
+            { x: 10 * 32, y: 10 * 32, weakness: 'fire' },
+            { x: 15 * 32, y: 15 * 32, weakness: 'ice' },
+            { x: 20 * 32, y: 20 * 32, weakness: null } // Neutro
+        ];
+        
+        for (const config of dummyConfigs) {
+            if (!this.tileMap.isSolid(config.x + 16, config.y + 20)) {
+                this.enemies.push(new TrainingDummy(config.x, config.y, config.weakness));
             }
         }
         
@@ -723,18 +738,29 @@ class Game {
         }
     }
     
-        checkAttackHits() {
+         checkAttackHits() {
         const ah = this.player.attackHitbox;
         let damage = this.player.getAttackDamage();
         
-        // ✅ NOVO: Bônus de dano sombreado
-        damage += this.corruption.getShadowDamageBonus();
+        // ✅ NOVO: Obtém o tipo de dano da arma equipada
+        let damageType = 'physical';
+        if (this.equipment) {
+            const weapon = this.equipment.getEquippedWeapon();
+            if (weapon && weapon.damageType) {
+                damageType = weapon.damageType;
+            }
+        }
         
-        // ✅ Aplica bônus de dano da árvore
+        // Bônus de dano da árvore
         const bonuses = this.skillTree.getBonuses();
         damage = Math.floor(damage * (1 + (bonuses.damageBonus || 0)));
         
-        // ✅ Aplica crítico
+        // Bônus de dano sombreado (só se tipo for shadow)
+        if (damageType === 'shadow') {
+            damage += this.corruption.getShadowDamageBonus();
+        }
+        
+        // Crítico
         let isCritical = false;
         if (bonuses.critChance && Math.random() < bonuses.critChance) {
             damage = Math.floor(damage * (bonuses.critMultiplier || 2));
@@ -746,31 +772,18 @@ class Game {
             if (!enemy.alive) continue;
             
             if (this.boxCollision(ah, { x: enemy.x, y: enemy.y, width: enemy.width, height: enemy.height })) {
-                const result = enemy.takeDamage(damage);
-
-                // ✅ NOVO: Drenar vida (habilidade sombria)
-                const lifeSteal = this.corruption.getLifeStealPercent();
-                if (lifeSteal > 0) {
-                    const heal = Math.floor(result.damage * lifeSteal);
-                    this.player.heal(heal);
-                }
-                
-                // ✅ NOVO: Corrupção ao matar
-                if (result.died) {
-                    this.corruption.onEnemyKilled(enemy);
-                    this.gainXP(result.xp);
-                }
-
+                const result = enemy.takeDamage(damage, damageType);
                 this.audio.playHit();
-
-                                // ✅ Partículas de impacto
+                
+                // Partículas de impacto
                 this.particles.emitImpact(
                     enemy.x + enemy.width / 2,
                     enemy.y + enemy.height / 2,
                     isCritical
                 );
                 
-                const color = isCritical ? '#ff3333' : '#ffeb3b';
+                // Número de dano colorido pelo tipo
+                const color = DAMAGE_TYPE_COLORS[damageType] || '#ffeb3b';
                 this.damageNumbers.add(
                     enemy.x + enemy.width / 2,
                     enemy.y,
@@ -780,16 +793,12 @@ class Game {
                 );
                 
                 if (result.died) {
-                    if (result.died) {
-                    // ✅ Partículas de explosão
                     this.particles.emitExplosion(
                         enemy.x + enemy.width / 2,
                         enemy.y + enemy.height / 2,
                         enemy instanceof CorruptedShadow ? '#aa22aa' : '#ff6600'
                     );
                     this.corruption.onEnemyKilled(enemy);
-                    this.gainXP(result.xp);
-                }
                     this.gainXP(result.xp);
                 }
             }
@@ -800,10 +809,16 @@ class Game {
             if (!shadow.alive) continue;
             
             if (this.boxCollision(ah, { x: shadow.x, y: shadow.y, width: shadow.width, height: shadow.height })) {
-                const result = shadow.takeDamage(damage);
+                const result = shadow.takeDamage(damage, damageType);
                 this.audio.playHit();
                 
-                const color = isCritical ? '#ff3333' : '#ffeb3b';
+                this.particles.emitImpact(
+                    shadow.x + shadow.width / 2,
+                    shadow.y + shadow.height / 2,
+                    isCritical
+                );
+                
+                const color = DAMAGE_TYPE_COLORS[damageType] || '#ffeb3b';
                 this.damageNumbers.add(
                     shadow.x + shadow.width / 2,
                     shadow.y,
@@ -812,7 +827,20 @@ class Game {
                     isCritical
                 );
                 
+                // Drenar vida
+                const lifeSteal = this.corruption.getLifeStealPercent();
+                if (lifeSteal > 0 && result.damage > 0) {
+                    const heal = Math.floor(result.damage * lifeSteal);
+                    this.player.heal(heal);
+                }
+                
                 if (result.died) {
+                    this.particles.emitExplosion(
+                        shadow.x + shadow.width / 2,
+                        shadow.y + shadow.height / 2,
+                        '#aa22aa'
+                    );
+                    this.corruption.onEnemyKilled(shadow);
                     this.gainXP(result.xp);
                 }
             }
@@ -983,11 +1011,11 @@ class Game {
         const ctx = this.ctx;
         
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(startX, startY, 220, 70);
+        ctx.fillRect(startX, startY, 220, 82); // Espaço extra para barras de corrupção e stamina
         
         ctx.strokeStyle = '#ffd700';
         ctx.lineWidth = 2;
-        ctx.strokeRect(startX, startY, 220, 70);
+        ctx.strokeRect(startX, startY, 220, 82);
         
         ctx.fillStyle = '#ffd700';
         ctx.font = 'bold 12px Arial';
@@ -1057,7 +1085,27 @@ class Game {
         ctx.fillStyle = tier.color;
         ctx.font = 'bold 8px Arial';
         ctx.fillText(`🌑 ${tier.name} (${Math.round(this.corruption.value)}%)`, barX + barWidth / 2, corruptionBarY + 5);
-    
+   
+                // === Barra de Stamina ===
+        const staminaBarY = corruptionBarY + 10;
+        const staminaBarHeight = 6;
+        
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(barX, staminaBarY, barWidth, staminaBarHeight);
+        
+        const staminaPercent = this.player.stamina / this.player.maxStamina;
+        const staminaColor = this.player.dashing ? '#ffaa00' : 
+                             (this.player.stamina < this.player.staminaCost ? '#ff6666' : '#4ade80');
+        
+        ctx.fillStyle = staminaColor;
+        ctx.fillRect(barX, staminaBarY, barWidth * staminaPercent, staminaBarHeight);
+        
+        ctx.strokeStyle = '#fff';
+        ctx.strokeRect(barX, staminaBarY, barWidth, staminaBarHeight);
+        
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 8px Arial';
+        ctx.fillText(`⚡ ${Math.floor(this.player.stamina)}/${this.player.maxStamina}`, barX + barWidth / 2, staminaBarY + 5);
     }
         renderSkillPointsNotification() {
         const ctx = this.ctx;

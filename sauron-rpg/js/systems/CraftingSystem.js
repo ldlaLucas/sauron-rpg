@@ -51,9 +51,44 @@ class CraftingSystem {
                 },
                 result: 'elven_blade',
                 quality: 'Excellent'
+            },
+                    // ✅ NOVAS RECEITAS ELEMENTAIS
+            {
+                id: 'flame_sword',
+                name: 'Espada Flamejante',
+                description: 'Lâmina em chamas. Queima os inimigos.',
+                ingredients: {
+                    iron: 3,
+                    valinor_crystal: 1
+                },
+                result: 'flame_sword',
+                quality: 'Excellent'
+            },
+            {
+                id: 'frost_staff',
+                name: 'Cajado de Gelo',
+                description: 'Congela os inimigos ao atingi-los.',
+                ingredients: {
+                    iron: 2,
+                    wood: 2,
+                    valinor_crystal: 1
+                },
+                result: 'frost_staff',
+                quality: 'Excellent'
+            },
+            {
+                id: 'thunder_blade',
+                name: 'Lâmina do Trovão',
+                description: 'Descarga elétrica a cada golpe.',
+                ingredients: {
+                    iron: 4,
+                    valinor_crystal: 2
+                },
+                result: 'thunder_blade',
+                quality: 'Masterwork'
             }
         ];
-    } 
+    }
     
     open() {
         this.active = true;

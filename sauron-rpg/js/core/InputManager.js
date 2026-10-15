@@ -7,6 +7,11 @@ class InputManager {
 
         this.keys = {};
         this.keys['control'] = false;
+
+               // ✅ NOVO: Garante que Shift está sendo rastreado
+        if (!this.keys['shift']) {
+            this.keys['shift'] = false;
+        }
     }
     
     setupListeners() {
@@ -23,6 +28,25 @@ class InputManager {
                 this.keys['control'] = false;
             }
             this.keys[e.key.toLowerCase()] = false;
+        });
+                window.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            this.keys[key] = true;
+            
+            // ✅ NOVO: Shift
+            if (e.key === 'Shift') {
+                this.keys['shift'] = true;
+            }
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            this.keys[key] = false;
+            
+            // ✅ NOVO: Shift
+            if (e.key === 'Shift') {
+                this.keys['shift'] = false;
+            }
         });
     }
     

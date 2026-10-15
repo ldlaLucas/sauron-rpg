@@ -29,6 +29,25 @@ class Player {
         this.attackRange = 40;
         this.baseDamage = 5;
         this.attackHitbox = null;
+
+        // ✅ NOVO: Sistema de Dash
+        this.dashing = false;
+        this.dashTimer = 0;
+        this.dashDuration = 0.25; // segundos
+        this.dashCooldown = 0;
+        this.dashCooldownMax = 0.8;
+        this.dashSpeed = 400; // velocidade durante o dash
+        this.dashDirection = { x: 0, y: 0 };
+        this.invincible = false; // i-frames
+        
+        // ✅ NOVO: Stamina
+        this.maxStamina = 100;
+        this.stamina = 100;
+        this.staminaCost = 25; // custo por dash
+        this.staminaRegen = 30; // regeneração por segundo
+        this.staminaRegenDelay = 0; // delay antes de começar a regenerar
+        this.staminaRegenDelayMax = 0.5;
+        
         
         // ✅ NOVA FLAG: controla se o hit já foi processado neste ataque
         this.attackHitProcessed = false;
@@ -48,26 +67,75 @@ class Player {
         // Atualiza timers
         this.hitFlash = Math.max(0, this.hitFlash - deltaTime * 4);
         this.attackCooldown = Math.max(0, this.attackCooldown - deltaTime);
+        this.dashCooldown = Math.max(0, this.dashCooldown - deltaTime);
         
-        // ✅ GARANTIA DE RESET DO ATAQUE
+        // ✅ NOVO: Atualiza stamina
+        if (this.staminaRegenDelay > 0) {
+            this.staminaRegenDelay -= deltaTime;
+        } else if (this.stamina < this.maxStamina && !this.dashing) {
+            this.stamina = Math.min(this.maxStamina, this.stamina + this.staminaRegen * deltaTime);
+        }
+        
+        // ✅ NOVO: Atualiza dash
+        if (this.dashing) {
+            this.dashTimer -= deltaTime;
+            
+            // Move na direção do dash
+            const newX = this.x + this.dashDirection.x * this.dashSpeed * deltaTime;
+            const newY = this.y + this.dashDirection.y * this.dashSpeed * deltaTime;
+            
+            // Colisão simplificada durante dash (pode atravessar inimigos mas não paredes)
+            if (!tileMap.isSolid(newX + 4, this.y + 4) && 
+                !tileMap.isSolid(newX + this.width - 4, this.y + this.height - 4)) {
+                this.x = newX;
+            }
+            if (!tileMap.isSolid(this.x + 4, newY + 4) && 
+                !tileMap.isSolid(this.x + this.width - 4, newY + this.height - 4)) {
+                this.y = newY;
+            }
+            
+            // ✅ NOVO: Emite partículas de rastro durante o dash
+            if (window.game && window.game.particles) {
+                window.game.particles.emitDashTrail(
+                    this.x + this.width / 2,
+                    this.y + this.height / 2,
+                    this.direction
+                );
+            }
+            
+            if (this.dashTimer <= 0) {
+                this.dashing = false;
+                this.invincible = false;
+            }
+            
+            // Durante o dash, não faz mais nada
+            return;
+        }
+        
+        // Atualiza ataque
         if (this.attacking) {
             this.attackTimer -= deltaTime;
             if (this.attackTimer <= 0) {
                 this.attacking = false;
                 this.attackHitbox = null;
                 this.attackHitProcessed = false;
-                console.log('✅ Ataque finalizado e resetado');
             }
         }
         
+        // ✅ NOVO: Iniciar dash com SHIFT
+        if (input.isKeyDown('shift') && !this.dashing && 
+            this.dashCooldown <= 0 && this.stamina >= this.staminaCost &&
+            !this.attacking) {
+            this.startDash();
+        }
+        
         // Iniciar ataque com ESPAÇO
-        if (input.isKeyDown(' ') && !this.attacking && this.attackCooldown <= 0) {
-            console.log('⚔️ Tentando atacar...');
+        if (input.isKeyDown(' ') && !this.attacking && this.attackCooldown <= 0 && !this.dashing) {
             this.startAttack();
         }
         
-        // Movimento (só se não estiver atacando)
-        if (!this.attacking) {
+        // Movimento (só se não estiver atacando ou dando dash)
+        if (!this.attacking && !this.dashing) {
             const movement = input.getMovement();
             
             if (movement.dx < 0) this.direction = 'left';
@@ -85,6 +153,57 @@ class Player {
                 this.y = newY;
             }
         }
+    }
+    
+    // ✅ NOVO: Método de dash
+    startDash() {
+        this.dashing = true;
+        this.dashTimer = this.dashDuration;
+        this.dashCooldown = this.dashCooldownMax;
+        this.invincible = true; // i-frames
+        this.stamina -= this.staminaCost;
+        this.staminaRegenDelay = this.staminaRegenDelayMax;
+        
+        // Direção baseada na direção atual
+        if (this.direction === 'down') {
+            this.dashDirection = { x: 0, y: 1 };
+        } else if (this.direction === 'up') {
+            this.dashDirection = { x: 0, y: -1 };
+        } else if (this.direction === 'left') {
+            this.dashDirection = { x: -1, y: 0 };
+        } else {
+            this.dashDirection = { x: 1, y: 0 };
+        }
+        
+        console.log(`💨 Dash na direção ${this.direction}!`);
+    }
+    
+    // ✅ MODIFICADO: takeDamage agora verifica invencibilidade
+    takeDamage(amount, damageType = 'physical') {
+        // i-frames: ignora dano durante dash
+        if (this.invincible) {
+            console.log('🛡️ Dano ignorado (i-frames ativos)');
+            return 0;
+        }
+        
+        const bonuses = this.skillBonuses || {};
+        const reduction = bonuses.damageReduction || 0;
+        const actualDamage = Math.max(1, Math.floor(amount * (1 - reduction)));
+        
+        this.hp = Math.max(0, this.hp - actualDamage);
+        this.hitFlash = 1;
+        
+        // Partículas de dano
+        if (window.game && window.game.particles) {
+            window.game.particles.emitDamage(
+                this.x + this.width / 2,
+                this.y + this.height / 2,
+                DAMAGE_TYPE_COLORS[damageType] || '#ff3333'
+            );
+        }
+        
+        console.log(`💔 Mairon recebeu ${actualDamage} de dano ${DAMAGE_TYPE_NAMES[damageType]} (HP: ${this.hp}/${this.maxHP})`);
+        return actualDamage;
     }
 
          startAttack() {
@@ -177,6 +296,14 @@ class Player {
 
         // ✅ NOVO: Calcula intensidade da corrupção (0 a 1)
         const corruptionLevel = this.corruption ? this.corruption.getCorruptionPercent() : 0;
+
+                // ✅ NOVO: Efeito visual durante o dash
+        if (this.dashing) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.beginPath();
+            ctx.arc(screenX + 16, screenY + 16, 18, 0, Math.PI * 2);
+            ctx.fill();
+        }
         
         // ✅ NOVO: Aura sombria ao redor do jogador (se corrupção > 20)
         if (corruptionLevel > 0.2) {
@@ -406,7 +533,56 @@ class Player {
             // Cabo
             ctx.fillStyle = '#8b5a2b';
             ctx.fillRect(wx, wy + 6, 4, 3);
+                } else if (weapon.visual === 'flame_sword') {
+            // Espada Flamejante
+            ctx.fillStyle = '#8b5a2b';
+            ctx.fillRect(wx, wy + 6, 4, 3);
+            
+            // Lâmina em chamas
+            const flicker = Math.sin(Date.now() / 100) * 0.3 + 0.7;
+            ctx.fillStyle = `rgba(255, 100, 0, ${flicker})`;
+            ctx.fillRect(wx + 1, wy - 6, 2, 12);
+            
+            ctx.fillStyle = '#ff6600';
+            ctx.fillRect(wx, wy - 7, 4, 14);
+            
+            // Brilho
+            ctx.fillStyle = 'rgba(255, 200, 0, 0.5)';
+            ctx.fillRect(wx - 1, wy - 8, 6, 16);
+        } else if (weapon.visual === 'frost_staff') {
+            // Cajado de Gelo
+            ctx.fillStyle = '#5a3a1a';
+            ctx.fillRect(wx + 1, wy - 4, 2, 14);
+            
+            // Cristal de gelo no topo
+            ctx.fillStyle = '#66ccff';
+            ctx.beginPath();
+            ctx.moveTo(wx + 2, wy - 8);
+            ctx.lineTo(wx + 5, wy - 4);
+            ctx.lineTo(wx + 2, wy);
+            ctx.lineTo(wx - 1, wy - 4);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Brilho
+            const shimmer = Math.sin(Date.now() / 200) * 0.3 + 0.7;
+            ctx.fillStyle = `rgba(150, 220, 255, ${shimmer})`;
+            ctx.fillRect(wx - 1, wy - 8, 6, 8);
+        } else if (weapon.visual === 'thunder_blade') {
+            // Lâmina do Trovão
+            ctx.fillStyle = '#8b5a2b';
+            ctx.fillRect(wx, wy + 6, 4, 3);
+            
+            // Lâmina amarela
+            ctx.fillStyle = '#ffff00';
+            ctx.fillRect(wx + 1, wy - 6, 2, 12);
+            
+            // Raios
+            const flash = Math.sin(Date.now() / 80) > 0 ? 1 : 0.5;
+            ctx.fillStyle = `rgba(255, 255, 100, ${flash})`;
+            ctx.fillRect(wx - 1, wy - 7, 6, 14);
         }
+        
 
     }
 

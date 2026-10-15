@@ -41,6 +41,20 @@ class Enemy extends Entity {
         // Animação simples
         this.animTimer = 0;
         this.animFrame = 0;
+
+           // ✅ NOVO: Resistências por tipo de dano
+        // Valores: 0 = neutro, 0.5 = +50% dano (fraqueza), -0.5 = -50% dano (resistência), 1 = imunidade
+        this.resistances = data.resistances || {
+            'physical': 0,
+            'fire': 0,
+            'ice': 0,
+            'lightning': 0,
+            'shadow': 0,
+            'light': 0
+        };
+        
+        // ✅ NOVO: Sistema de tipos de dano
+        this.damage
     }
     
     update(deltaTime, player, tileMap) {
@@ -261,25 +275,68 @@ class Enemy extends Entity {
         this.stateTimer = newState === 'attack' ? 0.4 : 0;
     }
     
-    takeDamage(amount) {
-        if (!this.alive) return { died: false };
+        takeDamage(amount, damageType = 'physical') {
+        if (!this.alive) return { died: false, damage: 0, effectiveness: 'neutral' };
         
-        const actualDamage = Math.max(1, amount - this.defense);
-        this.hp -= actualDamage;
+        // ✅ NOVO: Cálculo de dano inline (sem depender de instância)
+        const resistance = (this.resistances && this.resistances[damageType]) || 0;
+        
+        // Imunidade
+        if (resistance >= 1) {
+            console.log(`🛡️ ${this.name} é imune a dano ${DAMAGE_TYPE_NAMES[damageType]}!`);
+            if (window.game && window.game.particles) {
+                window.game.particles.emitEffectiveness(
+                    this.x + this.width / 2,
+                    this.y + this.height / 2,
+                    'immune'
+                );
+            }
+            return { died: false, damage: 0, effectiveness: 'immune' };
+        }
+        
+        // Calcula multiplicador e dano final
+        const multiplier = 1 - resistance;
+        let finalDamage = Math.max(1, Math.floor(amount * multiplier));
+        finalDamage = Math.max(0, finalDamage - this.defense);
+        
+        // Determina efetividade
+        let effectiveness = 'neutral';
+        if (resistance <= -0.4) effectiveness = 'weak';
+        else if (resistance >= 0.4) effectiveness = 'resist';
+        
+        this.hp -= finalDamage;
         this.hitFlash = 1;
         
-        console.log(`🩸 ${this.name} recebeu ${actualDamage} de dano (HP: ${this.hp}/${this.maxHP})`);
+        // Feedback visual
+        if (window.game && window.game.particles) {
+            window.game.particles.emitElementalImpact(
+                this.x + this.width / 2,
+                this.y + this.height / 2,
+                damageType,
+                effectiveness === 'weak'
+            );
+            
+            if (effectiveness === 'weak' || effectiveness === 'resist') {
+                window.game.particles.emitEffectiveness(
+                    this.x + this.width / 2,
+                    this.y + this.height / 2,
+                    effectiveness
+                );
+            }
+        }
+        
+        const typeName = DAMAGE_TYPE_NAMES[damageType] || 'Físico';
+        console.log(`🩸 ${this.name} recebeu ${finalDamage} de dano ${typeName} (${effectiveness}) (HP: ${this.hp}/${this.maxHP})`);
         
         if (this.hp <= 0) {
             this.die();
-            return { died: true, damage: actualDamage, xp: this.xpReward };
+            return { died: true, damage: finalDamage, xp: this.xpReward, effectiveness: effectiveness };
         }
         
-        // Entra em estado hurt brevemente
         this.changeState('hurt');
         this.stateTimer = 0.2;
         
-        return { died: false, damage: actualDamage };
+        return { died: false, damage: finalDamage, effectiveness: effectiveness };
     }
     
     die() {

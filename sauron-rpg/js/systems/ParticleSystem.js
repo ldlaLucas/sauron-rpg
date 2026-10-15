@@ -396,4 +396,125 @@ class ParticleSystem {
             }));
         }
     }
+
+        // ✅ NOVO: Rastro do dash
+    emitDashTrail(x, y, direction) {
+        for (let i = 0; i < 3; i++) {
+            this.add(new Particle({
+                x: x + (Math.random() - 0.5) * 10,
+                y: y + (Math.random() - 0.5) * 10,
+                vx: (Math.random() - 0.5) * 20,
+                vy: (Math.random() - 0.5) * 20,
+                life: 0.3 + Math.random() * 0.2,
+                size: 3 + Math.random() * 2,
+                endSize: 0,
+                color: '#ffffff',
+                friction: 0.9,
+                shape: 'circle',
+                glow: true
+            }));
+        }
+    }
+    
+    // ✅ NOVO: Partículas elementais por tipo de dano
+    emitElementalImpact(x, y, damageType, isCritical = false) {
+        const color = DAMAGE_TYPE_COLORS[damageType] || '#ffffff';
+        const count = isCritical ? 25 : 12;
+        
+        for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 60 + Math.random() * 100;
+            
+            let config = {
+                x: x,
+                y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                life: 0.3 + Math.random() * 0.3,
+                size: 2 + Math.random() * 3,
+                endSize: 0,
+                color: color,
+                friction: 0.88,
+                shape: 'spark',
+                glow: true
+            };
+            
+            // Efeitos específicos por tipo
+            if (damageType === 'fire') {
+                config.gravity = -50; // fogo sobe
+                config.shape = 'circle';
+            } else if (damageType === 'ice') {
+                config.shape = 'square'; // cristais
+                config.friction = 0.85;
+            } else if (damageType === 'lightning') {
+                config.shape = 'spark';
+                config.life = 0.2 + Math.random() * 0.2;
+            } else if (damageType === 'shadow') {
+                config.color = '#4a0066';
+                config.shape = 'circle';
+            } else if (damageType === 'light') {
+                config.color = '#fffacd';
+                config.gravity = -30;
+                config.shape = 'circle';
+            }
+            
+            this.add(new Particle(config));
+        }
+    }
+    
+    // ✅ NOVO: Efeito de fraqueza/resistência
+    emitEffectiveness(x, y, effectiveness) {
+        if (effectiveness === 'weak') {
+            // Explosão vermelha (dano extra)
+            for (let i = 0; i < 15; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 80 + Math.random() * 60;
+                this.add(new Particle({
+                    x: x, y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 0.5,
+                    size: 3,
+                    endSize: 0,
+                    color: '#ff3333',
+                    friction: 0.9,
+                    shape: 'circle',
+                    glow: true
+                }));
+            }
+        } else if (effectiveness === 'resist') {
+            // Escudo cinza (dano reduzido)
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                this.add(new Particle({
+                    x: x, y: y,
+                    vx: Math.cos(angle) * 30,
+                    vy: Math.sin(angle) * 30,
+                    life: 0.4,
+                    size: 2,
+                    endSize: 0,
+                    color: '#888888',
+                    friction: 0.85,
+                    shape: 'square'
+                }));
+            }
+        } else if (effectiveness === 'immune') {
+            // Anel dourado (imunidade)
+            for (let i = 0; i < 16; i++) {
+                const angle = (i / 16) * Math.PI * 2;
+                this.add(new Particle({
+                    x: x, y: y,
+                    vx: Math.cos(angle) * 60,
+                    vy: Math.sin(angle) * 60,
+                    life: 0.6,
+                    size: 3,
+                    endSize: 1,
+                    color: '#ffd700',
+                    friction: 0.9,
+                    shape: 'circle',
+                    glow: true
+                }));
+            }
+        }
+    }
 }
