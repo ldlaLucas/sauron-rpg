@@ -62,7 +62,22 @@ class Player {
     }
     
         update(deltaTime, input, tileMap) {
-        this.speed = this.baseSpeed + (this.equipment ? this.equipment.getBonus('speed') : 0);
+                // ✅ NOVO: Verifica se pode agir (stun)
+        const canAct = window.game && window.game.statusEffects 
+            ? window.game.statusEffects.canAct(this) 
+            : true;
+        
+        if (!canAct) {
+            // Atordoado: só atualiza timers visuais
+            this.hitFlash = Math.max(0, this.hitFlash - deltaTime * 4);
+            return;
+        }
+        
+        // ✅ NOVO: Aplica multiplicador de velocidade por status
+        let speedMultiplier = window.game && window.game.statusEffects 
+            ? window.game.statusEffects.getSpeedMultiplier(this) 
+            : 1;
+        this.speed = this.baseSpeed + (this.equipment ? this.equipment.getBonus('speed') : 0) * speedMultiplier;
         
         // Atualiza timers
         this.hitFlash = Math.max(0, this.hitFlash - deltaTime * 4);
@@ -179,8 +194,8 @@ class Player {
     }
     
     // ✅ MODIFICADO: takeDamage agora verifica invencibilidade
-    takeDamage(amount, damageType = 'physical') {
-        // i-frames: ignora dano durante dash
+        takeDamage(amount, damageType = 'physical') {
+        // i-frames
         if (this.invincible) {
             console.log('🛡️ Dano ignorado (i-frames ativos)');
             return 0;
@@ -193,7 +208,12 @@ class Player {
         this.hp = Math.max(0, this.hp - actualDamage);
         this.hitFlash = 1;
         
-        // Partículas de dano
+        // ✅ NOVO: Aplica estado baseado no tipo de dano recebido
+        if (window.game && window.game.statusEffects) {
+            window.game.statusEffects.applyFromDamageType(this, damageType);
+        }
+        
+        // Partículas
         if (window.game && window.game.particles) {
             window.game.particles.emitDamage(
                 this.x + this.width / 2,
@@ -290,13 +310,40 @@ class Player {
         );
     }
     
-        render(ctx, camera) {
+            render(ctx, camera) {
         const screenX = this.x - camera.x - 4;
         const screenY = this.y - camera.y - 4;
-
-        // ✅ NOVO: Calcula intensidade da corrupção (0 a 1)
+        
         const corruptionLevel = this.corruption ? this.corruption.getCorruptionPercent() : 0;
-
+        
+        // ✅ NOVO: Efeitos visuais de status
+        if (window.game && window.game.statusEffects) {
+            const statuses = window.game.statusEffects.getStatuses(this);
+            
+            // Congelado: overlay azul
+            if (statuses['frozen']) {
+                ctx.fillStyle = 'rgba(100, 200, 255, 0.4)';
+                ctx.beginPath();
+                ctx.arc(screenX + 16, screenY + 16, 16, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Queimando: partículas de fogo (já tratado pelo tick)
+            // Atordoado: estrelas girando
+            if (statuses['stunned']) {
+                const time = Date.now() / 200;
+                ctx.fillStyle = '#ffff00';
+                ctx.font = '10px Arial';
+                for (let i = 0; i < 3; i++) {
+                    const angle = time + (i * Math.PI * 2 / 3);
+                    const sx = screenX + 16 + Math.cos(angle) * 14;
+                    const sy = screenY - 2 + Math.sin(angle) * 4;
+                    ctx.fillText('⭐', sx, sy);
+                }
+            }
+        }
+        
+        // ... resto do código existente ...
                 // ✅ NOVO: Efeito visual durante o dash
         if (this.dashing) {
             ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';

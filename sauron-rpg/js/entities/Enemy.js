@@ -57,12 +57,44 @@ class Enemy extends Entity {
         this.damage
     }
     
-    update(deltaTime, player, tileMap) {
-        // Se morto, conta respawn
+      update(deltaTime, player, tileMap) {
         if (!this.alive) {
             this.respawnTimer -= deltaTime;
             if (this.respawnTimer <= 0) {
                 this.respawn();
+            }
+            return null;
+        }
+        
+        // ✅ DEBUG: Log a cada 60 frames
+        if (!this.debugCounter) this.debugCounter = 0;
+        this.debugCounter++;
+        
+        let canAct = true;
+        let speedMultiplier = 1;
+        
+        if (window.game && window.game.statusEffects) {
+            canAct = window.game.statusEffects.canAct(this);
+            speedMultiplier = window.game.statusEffects.getSpeedMultiplier(this);
+            
+            // ✅ DEBUG: Log a cada segundo
+            if (this.debugCounter % 60 === 0) {
+                console.log(`🔍 [${this.name}] Enemy.update(): canAct=${canAct}, speedMult=${speedMultiplier}, state=${this.state}`);
+            }
+        }
+        
+        // ✅ CORREÇÃO: Garante valores válidos
+        if (typeof canAct !== 'boolean') canAct = true;
+        if (typeof speedMultiplier !== 'number' || isNaN(speedMultiplier) || speedMultiplier <= 0) {
+            speedMultiplier = 1;
+        }
+        
+        if (!canAct) {
+            this.hitFlash = Math.max(0, this.hitFlash - deltaTime * 4);
+            this.animTimer += deltaTime;
+            if (this.animTimer > 0.2) {
+                this.animTimer = 0;
+                this.animFrame = (this.animFrame + 1) % 4;
             }
             return null;
         }
@@ -73,7 +105,6 @@ class Enemy extends Entity {
         this.hitFlash = Math.max(0, this.hitFlash - deltaTime * 4);
         this.animTimer += deltaTime;
         
-        // Atualiza animação
         if (this.animTimer > 0.2) {
             this.animTimer = 0;
             this.animFrame = (this.animFrame + 1) % 4;
@@ -85,10 +116,10 @@ class Enemy extends Entity {
                 this.updateIdle(deltaTime, player);
                 break;
             case 'patrol':
-                this.updatePatrol(deltaTime, player, tileMap);
+                this.updatePatrol(deltaTime, player, tileMap, speedMultiplier);
                 break;
             case 'chase':
-                this.updateChase(deltaTime, player, tileMap);
+                this.updateChase(deltaTime, player, tileMap, speedMultiplier);
                 break;
             case 'attack':
                 this.updateAttack(deltaTime, player);
@@ -97,8 +128,11 @@ class Enemy extends Entity {
                 this.updateHurt(deltaTime);
                 break;
             case 'return':
-                this.updateReturn(deltaTime, tileMap);
+                this.updateReturn(deltaTime, tileMap, speedMultiplier);
                 break;
+            default:
+                console.warn(`⚠️ [${this.name}] Estado desconhecido: ${this.state}`);
+                this.state = 'idle';
         }
         
         return null;
@@ -125,8 +159,7 @@ class Enemy extends Entity {
         }
     }
     
-    updatePatrol(deltaTime, player, tileMap) {
-        // Verifica se detecta o jogador
+        updatePatrol(deltaTime, player, tileMap, speedMultiplier = 1) {
         if (this.canDetectPlayer(player)) {
             this.changeState('chase');
             return;
@@ -144,16 +177,48 @@ class Enemy extends Entity {
         const distance = Math.sqrt(dx * dx + dy * dy);
         
         if (distance < 5) {
-            // Chegou no ponto, espera um pouco
             this.patrolWaitTime -= deltaTime;
             if (this.patrolWaitTime <= 0) {
                 this.currentPatrolIndex = (this.currentPatrolIndex + 1) % this.patrolPoints.length;
                 this.patrolWaitTime = 1;
             }
         } else {
-            // Move em direção ao ponto
-            this.moveTowards(target.x, target.y, this.patrolSpeed, deltaTime, tileMap);
+            this.moveTowards(target.x, target.y, this.patrolSpeed * speedMultiplier, deltaTime, tileMap);
         }
+    }
+    
+    updateChase(deltaTime, player, tileMap, speedMultiplier = 1) {
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance > this.detectionRange * 1.5) {
+            this.changeState('return');
+            return;
+        }
+        
+        if (distance < this.attackRange) {
+            if (this.attackCooldown <= 0) {
+                this.changeState('attack');
+            }
+            return;
+        }
+        
+        this.moveTowards(player.x, player.y, this.chaseSpeed * speedMultiplier, deltaTime, tileMap);
+    }
+    
+    updateReturn(deltaTime, tileMap, speedMultiplier = 1) {
+        const dx = this.originalX - this.x;
+        const dy = this.originalY - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < 10) {
+            this.changeState('idle');
+            this.stateTimer = 2;
+            return;
+        }
+        
+        this.moveTowards(this.originalX, this.originalY, this.patrolSpeed * speedMultiplier, deltaTime, tileMap);
     }
     
     updateChase(deltaTime, player, tileMap) {
@@ -258,14 +323,15 @@ class Enemy extends Entity {
         }
     }
     
-    performAttack(player) {
+        performAttack(player) {
         const dx = player.x - this.x;
         const dy = player.y - this.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
         if (distance < this.attackRange + 20) {
             const actualDamage = Math.max(1, this.damage);
-            player.takeDamage(actualDamage);
+            // ✅ NOVO: Passa tipo de dano (inimigos usam físico por padrão)
+            player.takeDamage(actualDamage, this.damageType || 'physical');
             console.log(`💥 ${this.name} atacou Mairon! Dano: ${actualDamage}`);
         }
     }

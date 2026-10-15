@@ -336,7 +336,7 @@ class ParticleSystem {
     }
     
     // Dano recebido (vermelho)
-    emitDamage(x, y) {
+        emitDamage(x, y, color = '#ff3333') {
         for (let i = 0; i < 8; i++) {
             const angle = Math.random() * Math.PI * 2;
             const speed = 40 + Math.random() * 60;
@@ -349,7 +349,7 @@ class ParticleSystem {
                 life: 0.4 + Math.random() * 0.2,
                 size: 2 + Math.random() * 2,
                 endSize: 0,
-                color: '#ff3333',
+                color: color,
                 friction: 0.85,
                 shape: 'spark'
             }));

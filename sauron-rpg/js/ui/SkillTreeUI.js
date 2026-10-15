@@ -34,10 +34,15 @@ class SkillTreeUI {
         this.render();
     }
     
-    hide() {
+        hide() {
         this.container.style.display = 'none';
         this.active = false;
-        this.skillTree.close();
+        
+        // ✅ CORREÇÃO: NÃO chama skillTree.close() para evitar recursão
+        // Apenas atualiza o estado do skillTree diretamente
+        if (this.skillTree) {
+            this.skillTree.active = false;
+        }
     }
     
     updatePathButtons() {

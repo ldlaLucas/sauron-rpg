@@ -67,6 +67,8 @@ class Game {
 
         this.damageTypeSystem = new DamageTypeSystem();
 
+        this.statusEffects = new StatusEffectSystem();
+
     }
     
     // ✅ NOVO: Inicialização para o menu principal
@@ -648,14 +650,18 @@ class Game {
 
         // === Bonecos de treino (estáticos) — passa tileMap ===
         for (const enemy of this.enemies) {
+            enemy.render(this.ctx, this.camera);
             enemy.update(deltaTime, this.player, this.tileMap);
+            // ✅ NOVO: Ícones de status
+            this.statusEffects.renderStatusIcons(this.ctx, enemy, this.camera);
         }
-
-        // === Sombras Corrompidas (com IA) — passa tileMap ===
+        
         for (const shadow of this.corruptedShadows) {
+            shadow.render(this.ctx, this.camera);
             shadow.update(deltaTime, this.player, this.tileMap);
+            // ✅ NOVO: Ícones de status
+            this.statusEffects.renderStatusIcons(this.ctx, shadow, this.camera);
         }
-
         // === Passos ===
         const movement = this.input.getMovement();
         const isMoving = movement.dx !== 0 || movement.dy !== 0;
@@ -676,6 +682,9 @@ class Game {
         this.damageNumbers.update(deltaTime);
                 // === Partículas ===
         this.particles.update(deltaTime);
+
+                // === Status Effects ===
+        this.statusEffects.update(deltaTime, this);
         
         // ✅ NOVO: Rastro do jogador ao andar
         if (isMoving && !this.player.attacking) {
@@ -740,7 +749,10 @@ class Game {
     
          checkAttackHits() {
         const ah = this.player.attackHitbox;
-        let damage = this.player.getAttackDamage();
+             let damage = this.player.getAttackDamage();
+        
+        // ✅ NOVO: Multiplicador de dano por status (blessed/corrupted)
+        damage = Math.floor(damage * this.statusEffects.getDamageMultiplier(this.player));
         
         // ✅ NOVO: Obtém o tipo de dano da arma equipada
         let damageType = 'physical';
@@ -773,6 +785,9 @@ class Game {
             
             if (this.boxCollision(ah, { x: enemy.x, y: enemy.y, width: enemy.width, height: enemy.height })) {
                 const result = enemy.takeDamage(damage, damageType);
+
+                                // ✅ NOVO: Aplica estado baseado no tipo de dano
+                this.statusEffects.applyFromDamageType(enemy, damageType);
                 this.audio.playHit();
                 
                 // Partículas de impacto
@@ -810,6 +825,9 @@ class Game {
             
             if (this.boxCollision(ah, { x: shadow.x, y: shadow.y, width: shadow.width, height: shadow.height })) {
                 const result = shadow.takeDamage(damage, damageType);
+
+                                // ✅ NOVO: Aplica estado baseado no tipo de dano
+                this.statusEffects.applyFromDamageType(shadow, damageType);
                 this.audio.playHit();
                 
                 this.particles.emitImpact(
@@ -927,8 +945,12 @@ class Game {
         for (const npc of this.npcs) {
             npc.render(this.ctx, this.camera);
         }
+
         
         this.player.render(this.ctx, this.camera);
+
+         // ✅ NOVO: Ícones de status do jogador
+        this.statusEffects.renderStatusIcons(this.ctx, this.player, this.camera);
         
         this.damageNumbers.render(this.ctx, this.camera);
 
@@ -1106,6 +1128,40 @@ class Game {
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 8px Arial';
         ctx.fillText(`⚡ ${Math.floor(this.player.stamina)}/${this.player.maxStamina}`, barX + barWidth / 2, staminaBarY + 5);
+    
+                // === Ícones de Status do Jogador ===
+        const playerStatuses = this.statusEffects.getStatuses(this.player);
+        const statusKeys = Object.keys(playerStatuses);
+        
+        if (statusKeys.length > 0) {
+            const statusStartX = startX;
+            const statusY = startY - 20;
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(statusStartX, statusY, statusKeys.length * 28 + 6, 18);
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(statusStartX, statusY, statusKeys.length * 28 + 6, 18);
+            
+            statusKeys.forEach((statusId, i) => {
+                const def = STATUS_EFFECTS[statusId];
+                if (!def) return;
+                
+                const x = statusStartX + 4 + i * 28;
+                
+                // Ícone
+                ctx.fillStyle = def.color;
+                ctx.font = 'bold 11px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText(`${def.icon}`, x, statusY + 13);
+                
+                // Tempo restante
+                const remaining = Math.ceil(playerStatuses[statusId].remaining);
+                ctx.fillStyle = '#fff';
+                ctx.font = '9px Arial';
+                ctx.fillText(`${remaining}s`, x + 13, statusY + 13);
+            });
+        }
     }
         renderSkillPointsNotification() {
         const ctx = this.ctx;

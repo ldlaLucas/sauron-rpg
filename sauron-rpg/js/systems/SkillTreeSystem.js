@@ -253,16 +253,28 @@ class SkillTreeSystem {
         }
     }
     
-    close() {
+        close() {
         this.active = false;
+        
+        // ✅ CORREÇÃO: NÃO chama skillTreeUI.hide() para evitar recursão
+        // Apenas esconde o container diretamente
         if (this.game.skillTreeUI) {
-            this.game.skillTreeUI.hide();
+            this.game.skillTreeUI.container.style.display = 'none';
+            this.game.skillTreeUI.active = false;
         }
     }
     
-    toggle() {
-        if (this.active) this.close();
-        else this.open();
+        toggle() {
+        if (this.active) {
+            // Fecha sem chamar UI.hide()
+            this.active = false;
+            if (this.game.skillTreeUI) {
+                this.game.skillTreeUI.container.style.display = 'none';
+                this.game.skillTreeUI.active = false;
+            }
+        } else {
+            this.open();
+        }
     }
     
     // ============================================

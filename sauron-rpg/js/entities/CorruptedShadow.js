@@ -31,13 +31,22 @@ class CorruptedShadow extends Enemy {
         this.respawnEffect = 0;
     }
     
-    update(deltaTime, player, tileMap) {
+        update(deltaTime, player, tileMap) {
+        // ✅ DEBUG: Log a cada 60 frames
+        if (!this.debugCounter) this.debugCounter = 0;
+        this.debugCounter++;
+        
+        if (this.debugCounter % 60 === 0) {
+            console.log(`🔍 [${this.name}] CorruptedShadow.update() chamado. state=${this.state}, alive=${this.alive}`);
+        }
+        
         this.pulseTimer += deltaTime;
+        
         if (this.respawnEffect > 0) {
             this.respawnEffect -= deltaTime;
         }
         
-        // ✅ NOVO: Rastro de fumaça ao perseguir
+        // Rastro de fumaça ao perseguir
         if ((this.state === 'chase' || this.state === 'attack') && 
             window.game && window.game.particles) {
             if (!this.smokeTimer) this.smokeTimer = 0;
@@ -50,9 +59,17 @@ class CorruptedShadow extends Enemy {
                 this.smokeTimer = 0.1;
             }
         }
-        return super.update(deltaTime, player, tileMap);
+        
+        // ✅ CORREÇÃO: Chama super.update() e captura o resultado
+        const result = super.update(deltaTime, player, tileMap);
+        
+        // ✅ DEBUG: Log após super.update()
+        if (this.debugCounter % 60 === 0) {
+            console.log(`🔍 [${this.name}] Após super.update(). state=${this.state}, x=${this.x.toFixed(0)}, y=${this.y.toFixed(0)}`);
+        }
+        
+        return result;
     }
-    
     renderDetails(ctx, x, y) {
         // Aura sombria pulsante
         const pulse = Math.sin(this.pulseTimer * 3) * 0.3 + 0.7;

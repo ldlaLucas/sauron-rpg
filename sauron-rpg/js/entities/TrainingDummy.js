@@ -1,6 +1,5 @@
 class TrainingDummy extends Enemy {
     constructor(x, y, damageTypeWeakness = null) {
-        // ✅ NOVO: Resistências baseadas no tipo de fraqueza
         const resistances = {
             'physical': 0,
             'fire': 0,
@@ -10,7 +9,6 @@ class TrainingDummy extends Enemy {
             'light': 0
         };
         
-        // Se tem fraqueza, toma +50% daquele tipo
         if (damageTypeWeakness) {
             resistances[damageTypeWeakness] = -0.5;
         }
@@ -31,15 +29,20 @@ class TrainingDummy extends Enemy {
             attackCooldown: 0,
             respawnTime: 4,
             color: '#8b5a2b',
-            resistances: resistances // ✅ NOVO
+            resistances: resistances
         });
         
         this.weakness = damageTypeWeakness;
+        this.debugCounter = 0; // ✅ DEBUG
     }
     
-    // ✅ Sobrescreve o update para NÃO executar IA
     update(deltaTime, player, tileMap) {
-        // Se morto, conta respawn
+        // ✅ DEBUG: Log a cada 60 frames (~1 segundo)
+        this.debugCounter++;
+        if (this.debugCounter % 60 === 0) {
+            console.log(`🔍 [${this.name}] update() chamado. hitFlash=${this.hitFlash.toFixed(2)}, alive=${this.alive}`);
+        }
+        
         if (!this.alive) {
             this.respawnTimer -= deltaTime;
             if (this.respawnTimer <= 0) {
@@ -48,8 +51,16 @@ class TrainingDummy extends Enemy {
             return null;
         }
         
-        // Atualiza apenas timers visuais
-        this.hitFlash = Math.max(0, this.hitFlash - deltaTime * 4);
+        // ✅ CORREÇÃO: Decrementa hitFlash SEMPRE
+        if (this.hitFlash > 0) {
+            const oldFlash = this.hitFlash;
+            this.hitFlash = Math.max(0, this.hitFlash - deltaTime * 4);
+            
+            // ✅ DEBUG: Log quando hitFlash muda
+            if (this.debugCounter % 30 === 0 && oldFlash !== this.hitFlash) {
+                console.log(`🔍 [${this.name}] hitFlash: ${oldFlash.toFixed(2)} → ${this.hitFlash.toFixed(2)}`);
+            }
+        }
         
         return null;
     }
@@ -60,24 +71,28 @@ class TrainingDummy extends Enemy {
         const screenX = this.x - camera.x;
         const screenY = this.y - camera.y;
         
+        // ✅ CORREÇÃO: Flash só quando hitFlash > 0.5 (threshold mais alto)
+        const useWhite = this.hitFlash > 0.5;
+        
         // Sombra
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
         ctx.beginPath();
         ctx.ellipse(screenX + 16, screenY + 38, 14, 4, 0, 0, Math.PI * 2);
         ctx.fill();
         
-        // Poste central (madeira)
-        ctx.fillStyle = this.hitFlash > 0 ? '#ffffff' : '#5a3a1a';
+        // Poste central
+        ctx.fillStyle = useWhite ? '#ffffff' : '#5a3a1a';
         ctx.fillRect(screenX + 14, screenY + 10, 4, 28);
         
-        // "Braços" cruzados (madeira)
+        // Braços
+        ctx.fillStyle = useWhite ? '#ffffff' : '#5a3a1a';
         ctx.fillRect(screenX + 4, screenY + 14, 24, 4);
         
-        // "Cabeça" (saco de treino)
-        ctx.fillStyle = this.hitFlash > 0 ? '#ffffff' : '#8b5a2b';
+        // Cabeça
+        ctx.fillStyle = useWhite ? '#ffffff' : '#8b5a2b';
         ctx.fillRect(screenX + 8, screenY + 2, 16, 14);
         
-        // Detalhes do saco (cordas)
+        // Detalhes
         ctx.fillStyle = '#3a2a0a';
         ctx.fillRect(screenX + 8, screenY + 6, 16, 1);
         ctx.fillRect(screenX + 8, screenY + 10, 16, 1);
@@ -99,7 +114,6 @@ class TrainingDummy extends Enemy {
         ctx.lineWidth = 1;
         ctx.strokeRect(barX, barY, barWidth, barHeight);
         
-        // Nome
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 9px Arial';
         ctx.textAlign = 'center';
